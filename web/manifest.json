@@ -1,0 +1,35 @@
+{
+    "name": "Roz Hisab",
+    "short_name": "RozHisab",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#F4F6F9",
+    "theme_color": "#1E3A5F",
+    "description": "Shopping lists, Udhar Khata aur Bill reminders, sab ek jagah.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

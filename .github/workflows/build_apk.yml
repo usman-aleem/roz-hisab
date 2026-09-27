@@ -1,0 +1,46 @@
+name: Build Release APK
+
+# Runs automatically on every push to main, and can also be
+# triggered manually from the GitHub Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      # The android/ and ios/ platform folders are intentionally NOT
+      # committed to the repo (see DEPLOYMENT.md) to keep the source
+      # tree lightweight — `flutter create .` regenerates them here on
+      # every CI run, exactly as a developer would do locally on
+      # first setup. Existing files (lib/, pubspec.yaml, assets/) are
+      # left untouched — flutter create only fills in what's missing.
+      - name: Generate platform projects (android/ios)
+        run: flutter create --org com.rozhisab --project-name roz_hisab .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate app icons
+        run: dart run flutter_launcher_icons
+
+      - name: Static analysis
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build release APK
+        run: flutter build apk --release --obfuscate --split-debug-info=build/debug-info
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: roz-hisab-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
