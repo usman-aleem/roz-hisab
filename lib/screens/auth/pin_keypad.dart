@@ -1,5 +1,57 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
+
+/// Wraps [child] and plays a short horizontal shake whenever
+/// [trigger] changes value — used to give clear physical feedback on
+/// a wrong PIN, alongside the red error state, instead of a plain
+/// static error message that's easy to miss.
+class ShakeWidget extends StatefulWidget {
+  final Widget child;
+  final int trigger;
+
+  const ShakeWidget({super.key, required this.child, required this.trigger});
+
+  @override
+  State<ShakeWidget> createState() => _ShakeWidgetState();
+}
+
+class _ShakeWidgetState extends State<ShakeWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+
+  @override
+  void didUpdateWidget(covariant ShakeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.trigger != oldWidget.trigger) {
+      _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final t = _ctrl.value;
+        // Decaying sine wave — a few quick side-to-side wobbles that
+        // settle back to center, rather than one abrupt jolt.
+        final dx = sin(t * pi * 6) * 10 * (1 - t);
+        return Transform.translate(offset: Offset(dx, 0), child: child);
+      },
+      child: widget.child,
+    );
+  }
+}
 
 /// Shared numeric keypad + dot indicator used by both the PIN setup
 /// screen and the PIN unlock screen.
@@ -18,6 +70,11 @@ class PinKeypad extends StatelessWidget {
   final VoidCallback onBackspace;
   final Widget? topAction;
 
+  /// When true, the dots/lock icon/subtitle switch to the danger
+  /// (red) color — paired with [ShakeWidget] by the parent screen to
+  /// give unmistakable "wrong PIN" feedback.
+  final bool hasError;
+
   const PinKeypad({
     super.key,
     required this.title,
@@ -28,10 +85,12 @@ class PinKeypad extends StatelessWidget {
     this.pinLength = 4,
     this.accentColor = AppColors.primary,
     this.topAction,
+    this.hasError = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = hasError ? AppColors.danger : accentColor;
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -41,37 +100,51 @@ class PinKeypad extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.1),
+                      color: color.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.lock_outline_rounded,
-                        color: accentColor, size: 30),
+                    child: Icon(
+                      hasError
+                          ? Icons.lock_open_rounded
+                          : Icons.lock_outline_rounded,
+                      color: color,
+                      size: 30,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(title,
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 6),
-                  Text(subtitle,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.textSecondary)),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 150),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: hasError
+                          ? AppColors.danger
+                          : AppColors.textSecondary,
+                      fontWeight: hasError ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                    child: Text(subtitle, textAlign: TextAlign.center),
+                  ),
                   const SizedBox(height: 28),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(pinLength, (i) {
                       final filled = i < enteredLength;
-                      return Container(
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
                         margin: const EdgeInsets.symmetric(horizontal: 8),
                         width: 16,
                         height: 16,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: filled ? accentColor : Colors.transparent,
-                          border: Border.all(color: accentColor, width: 1.6),
+                          color: filled ? color : Colors.transparent,
+                          border: Border.all(color: color, width: 1.6),
                         ),
                       );
                     }),

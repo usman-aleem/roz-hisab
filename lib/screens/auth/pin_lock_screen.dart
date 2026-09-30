@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import 'pin_keypad.dart';
+import 'pin_setup_screen.dart';
 
 /// Shown every time the app is opened, if App Lock is enabled.
 /// Calls [onUnlocked] once the correct PIN (or biometric) is verified.
@@ -19,6 +20,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
   String _current = '';
   String? _error;
   bool _biometricsAvailable = false;
+  int _shakeTrigger = 0;
 
   @override
   void initState() {
@@ -65,11 +67,114 @@ class _PinLockScreenState extends State<PinLockScreen> {
       setState(() {
         _error = 'Wrong PIN — try again';
         _current = '';
+        _shakeTrigger++;
       });
     }
   }
 
   Future<void> _forgotPin() async {
+    final hasQuestion = await _auth.hasSecurityQuestion();
+    if (!mounted) return;
+
+    if (hasQuestion) {
+      await _forgotPinWithSecurityQuestion();
+    } else {
+      // Legacy fallback for a PIN set before security questions
+      // existed — old behavior: reset removes the lock entirely.
+      await _forgotPinLegacy();
+    }
+  }
+
+  Future<void> _forgotPinWithSecurityQuestion() async {
+    final question = await _auth.getSecurityQuestion();
+    final answerCtrl = TextEditingController();
+    String? sheetError;
+
+    final verified = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Forgot Your PIN?',
+                    style:
+                        TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Answer your security question correctly to set a new PIN.',
+                  style:
+                      TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                Text(question ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: answerCtrl,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Your answer',
+                    errorText: sheetError,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final ok =
+                          await _auth.verifySecurityAnswer(answerCtrl.text);
+                      if (ok) {
+                        if (context.mounted) Navigator.pop(context, true);
+                      } else {
+                        setModalState(
+                            () => sheetError = 'Answer incorrect — try again');
+                      }
+                    },
+                    child: const Text('Verify'),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (verified != true || !mounted) return;
+
+    // Identity confirmed — remove the old PIN, then have them set a
+    // brand new one. The existing security question stays as-is.
+    await _auth.disableLock();
+    final newPinSet = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const PinSetupScreen(isReset: true)),
+    );
+    if (newPinSet == true) {
+      widget.onUnlocked();
+    }
+  }
+
+  Future<void> _forgotPinLegacy() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -108,19 +213,23 @@ class _PinLockScreenState extends State<PinLockScreen> {
           child: Column(
             children: [
               Expanded(
-                child: PinKeypad(
-                  title: 'Roz Hisab is Locked',
-                  subtitle: _error ?? 'Enter your 4-digit PIN',
-                  enteredLength: _current.length,
-                  onDigit: _onDigit,
-                  onBackspace: _onBackspace,
-                  topAction: _biometricsAvailable
-                      ? TextButton.icon(
-                          onPressed: _tryBiometric,
-                          icon: const Icon(Icons.fingerprint_rounded),
-                          label: const Text('Unlock with Fingerprint'),
-                        )
-                      : null,
+                child: ShakeWidget(
+                  trigger: _shakeTrigger,
+                  child: PinKeypad(
+                    title: 'Roz Hisab is Locked',
+                    subtitle: _error ?? 'Enter your 4-digit PIN',
+                    enteredLength: _current.length,
+                    hasError: _error != null,
+                    onDigit: _onDigit,
+                    onBackspace: _onBackspace,
+                    topAction: _biometricsAvailable
+                        ? TextButton.icon(
+                            onPressed: _tryBiometric,
+                            icon: const Icon(Icons.fingerprint_rounded),
+                            label: const Text('Unlock with Fingerprint'),
+                          )
+                        : null,
+                  ),
                 ),
               ),
               TextButton(

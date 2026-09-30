@@ -17,69 +17,132 @@ class ContactDetailScreen extends StatefulWidget {
 }
 
 class _ContactDetailScreenState extends State<ContactDetailScreen> {
-  void _addEntry(UdharType type) {
-    final amountCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
+  void _addEntry(UdharType type) => _entryForm(type: type);
+
+  /// Shared form for adding a new entry AND editing an existing one
+  /// (pass [existing] to edit it in place). The type can be corrected
+  /// via the two chips when editing, in case something was logged
+  /// the wrong way round originally.
+  void _entryForm({required UdharType type, UdharEntry? existing}) {
+    final isEditing = existing != null;
+    final amountCtrl = TextEditingController(
+        text: existing != null ? existing.amount.toStringAsFixed(0) : '');
+    final noteCtrl = TextEditingController(text: existing?.note ?? '');
+    UdharType selectedType = existing?.type ?? type;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                type == UdharType.theyOweMe
-                    ? 'I Gave (${widget.contact.name})'
-                    : 'I Took (${widget.contact.name})',
-                style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: amountCtrl,
-                autofocus: true,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: 'Amount (Rs.)'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: noteCtrl,
-                decoration: const InputDecoration(
-                    hintText: 'Note (optional) — e.g. tea money'),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final amount = double.tryParse(amountCtrl.text.trim());
-                    if (amount == null || amount <= 0) return;
-                    setState(() {
-                      widget.contact.entries.add(UdharEntry(
-                        id: const Uuid().v4(),
-                        type: type,
-                        amount: amount,
-                        note: noteCtrl.text.trim(),
-                      ));
-                    });
-                    AppData.instance.saveContacts();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Save'),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEditing
+                      ? 'Edit Entry (${widget.contact.name})'
+                      : (type == UdharType.theyOweMe
+                          ? 'I Gave (${widget.contact.name})'
+                          : 'I Took (${widget.contact.name})'),
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w800),
                 ),
-              ),
-            ],
+                if (isEditing) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _TypeChip(
+                          label: 'I Gave',
+                          selected: selectedType == UdharType.theyOweMe,
+                          onTap: () => setModalState(
+                              () => selectedType = UdharType.theyOweMe),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _TypeChip(
+                          label: 'I Took',
+                          selected: selectedType == UdharType.iOweThem,
+                          onTap: () => setModalState(
+                              () => selectedType = UdharType.iOweThem),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 14),
+                TextField(
+                  controller: amountCtrl,
+                  autofocus: !isEditing,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(hintText: 'Amount (Rs.)'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: noteCtrl,
+                  decoration: const InputDecoration(
+                      hintText: 'Note (optional) — e.g. tea money'),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    if (isEditing) ...[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            AppData.instance
+                                .deleteUdharEntry(widget.contact, existing!.id);
+                            setState(() {});
+                          },
+                          style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.danger),
+                          child: const Text('Delete'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final amount =
+                              double.tryParse(amountCtrl.text.trim());
+                          if (amount == null || amount <= 0) return;
+                          setState(() {
+                            if (isEditing) {
+                              existing!.type = selectedType;
+                              existing.amount = amount;
+                              existing.note = noteCtrl.text.trim();
+                            } else {
+                              widget.contact.entries.add(UdharEntry(
+                                id: const Uuid().v4(),
+                                type: type,
+                                amount: amount,
+                                note: noteCtrl.text.trim(),
+                              ));
+                            }
+                          });
+                          AppData.instance.saveContacts();
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -119,8 +182,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                 theyOweMe
                     ? 'Settle Up — ${widget.contact.name} paid you'
                     : 'Settle Up — you paid ${widget.contact.name}',
-                style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w800),
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 4),
               Text(
@@ -165,7 +228,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     final bal = widget.contact.balance;
     if (bal == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Already all settled — nothing to remind about.')),
+        const SnackBar(
+            content: Text('Already all settled — nothing to remind about.')),
       );
       return;
     }
@@ -191,11 +255,14 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
         ? 'Salam ${widget.contact.name}, Roz Hisab ke mutabiq apka mera Rs. ${bal.abs().toStringAsFixed(0)} udhar hai. Waqt milte hi ada kar dein, shukriya!'
         : 'Salam ${widget.contact.name}, yaad dila raha hoon ke mujhe apka Rs. ${bal.abs().toStringAsFixed(0)} dena hai — jald ada kar doon ga.';
 
-    final uri = Uri.parse('https://wa.me/$normalized?text=${Uri.encodeComponent(message)}');
+    final uri = Uri.parse(
+        'https://wa.me/$normalized?text=${Uri.encodeComponent(message)}');
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open WhatsApp — check the number and try again.')),
+        const SnackBar(
+            content: Text(
+                'Could not open WhatsApp — check the number and try again.')),
       );
     }
   }
@@ -247,8 +314,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Edit Person',
-                  style:
-                      TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 14),
               TextField(
                 controller: nameCtrl,
@@ -357,9 +423,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                       ? 'All Settled'
                       : (isPositive ? 'They owe you' : 'You owe them'),
                   style: TextStyle(
-                      fontSize: 13,
-                      color: color,
-                      fontWeight: FontWeight.w600),
+                      fontSize: 13, color: color, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -441,63 +505,149 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                         ..sort((a, b) => b.date.compareTo(a.date));
                       final e = sorted[index];
                       final positive = e.type == UdharType.theyOweMe;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
+                      return Dismissible(
+                        key: ValueKey(e.id),
+                        direction: DismissDirection.endToStart,
+                        confirmDismiss: (_) => showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Delete this entry?'),
+                            content: const Text(
+                                'This transaction will be permanently removed.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              positive
-                                  ? Icons.arrow_downward_rounded
-                                  : Icons.arrow_upward_rounded,
-                              color: positive
-                                  ? AppColors.success
-                                  : AppColors.danger,
-                              size: 18,
+                        onDismissed: (_) {
+                          AppData.instance
+                              .deleteUdharEntry(widget.contact, e.id);
+                          setState(() {});
+                        },
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.danger,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded,
+                              color: Colors.white),
+                        ),
+                        child: InkWell(
+                          onTap: () => _entryForm(type: e.type, existing: e),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    e.note.isEmpty
-                                        ? (positive ? 'Diya' : 'Liya')
-                                        : e.note,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  positive
+                                      ? Icons.arrow_downward_rounded
+                                      : Icons.arrow_upward_rounded,
+                                  color: positive
+                                      ? AppColors.success
+                                      : AppColors.danger,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        e.note.isEmpty
+                                            ? (positive ? 'Diya' : 'Liya')
+                                            : e.note,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                      Text(
+                                        DateFormat('dd MMM').format(e.date),
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    DateFormat('dd MMM').format(e.date),
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary),
+                                ),
+                                Text(
+                                  'Rs. ${e.amount.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: positive
+                                        ? AppColors.success
+                                        : AppColors.danger,
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.edit_outlined,
+                                    size: 14, color: AppColors.textMuted),
+                              ],
                             ),
-                            Text(
-                              'Rs. ${e.amount.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: positive
-                                    ? AppColors.success
-                                    : AppColors.danger,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       );
                     },
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small selectable pill used in the Edit Entry sheet to switch an
+/// entry between "I Gave" and "I Took".
+class _TypeChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TypeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primaryLight : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: selected ? AppColors.primaryDark : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }

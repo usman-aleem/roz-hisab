@@ -21,6 +21,8 @@ class StorageService {
   static const _keyBills = 'roz_hisab_bills';
   static const _keySeeded = 'roz_hisab_seeded_v1';
   static const _keyUserName = 'roz_hisab_user_name';
+  static const _keyUserPhone = 'roz_hisab_user_phone';
+  static const _keyUserEmail = 'roz_hisab_user_email';
   static const _keyMonthlyBudget = 'roz_hisab_monthly_budget';
 
   final CryptoService _crypto = CryptoService();
@@ -111,6 +113,29 @@ class StorageService {
   Future<String> loadUserName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyUserName) ?? '';
+  }
+
+  /// Phone/email are part of the user's own local profile ("Your
+  /// Details") — plain text like the name, purely for the user's own
+  /// reference, never transmitted anywhere.
+  Future<void> saveUserPhone(String phone) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUserPhone, phone);
+  }
+
+  Future<String> loadUserPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserPhone) ?? '';
+  }
+
+  Future<void> saveUserEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUserEmail, email);
+  }
+
+  Future<String> loadUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserEmail) ?? '';
   }
 
   /// A budget target isn't sensitive financial data on its own (no

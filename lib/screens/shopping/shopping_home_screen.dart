@@ -26,6 +26,14 @@ class _ShoppingHomeScreenState extends State<ShoppingHomeScreen> {
     setState(() {});
   }
 
+  void _editList(ShoppingListModel list) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ActiveListScreen(editList: list)),
+    );
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final lists = data.shoppingLists;
@@ -96,6 +104,7 @@ class _ShoppingHomeScreenState extends State<ShoppingHomeScreen> {
                         ),
                       );
                     },
+                    onEdit: () => _editList(list),
                   ),
                 );
               },
@@ -107,8 +116,10 @@ class _ShoppingHomeScreenState extends State<ShoppingHomeScreen> {
 class _ListTile extends StatelessWidget {
   final ShoppingListModel list;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
 
-  const _ListTile({required this.list, required this.onTap});
+  const _ListTile(
+      {required this.list, required this.onTap, required this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -153,12 +164,27 @@ class _ListTile extends StatelessWidget {
                 ],
               ),
             ),
-            Text(
-              'Rs. ${list.total.toStringAsFixed(0)}',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: AppColors.textPrimary),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Rs. ${list.total.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 2),
+                InkWell(
+                  onTap: onEdit,
+                  borderRadius: BorderRadius.circular(6),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.edit_outlined,
+                        size: 15, color: AppColors.textMuted),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

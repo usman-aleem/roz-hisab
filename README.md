@@ -33,7 +33,7 @@ A quick and practical way to manage shopping and purchase records.
 - "Buy Again" suggestions for frequently bought items, pre-filled with their last price
 - A quantity stepper for buying more than one of an item, without adding duplicate rows
 - Automatically calculate totals
-- Edit or remove items
+- Edit or remove items — tap any item to change its name, price, or quantity, or reopen a saved list from the history to correct it later
 - Automatic, zero-effort spend categorization (Grocery, Vegetables & Fruit, Dairy, Household, and more)
 - Track completed purchases
 - Generate PDF receipts
@@ -50,6 +50,7 @@ A digital ledger for managing informal lending and borrowing.
 - Maintain individual transaction histories
 - Track outstanding balances
 - Record full or partial repayments with a dedicated "Settle Up" action
+- Edit or delete any individual transaction (tap to edit, swipe to delete)
 - Send a friendly, pre-drafted balance reminder directly to WhatsApp
 - Clearly identify money receivable and payable
 - Maintain an updated running balance
@@ -60,7 +61,7 @@ This provides a reliable alternative to handwritten records and memory-based tra
 
 A centralized system for keeping track of important payments.
 
-- Add one-time or recurring bills
+- Add, edit, or delete one-time or recurring bills
 - Set payment amounts and due dates
 - Track payment status with clear, color-coded indicators
 - Monitor upcoming payments and identify overdue bills
@@ -100,6 +101,8 @@ Privacy is an important part of the Roz Hisab experience.
 **Offline-First** — Core financial records are designed to remain accessible without a continuous internet connection.
 
 Internet access is only used for features that inherently require it — sharing a receipt or backup file, or opening WhatsApp for a reminder. No background sync, no analytics, no server ever sees your data.
+
+**Optional App Lock** — Protect the app with a 4-digit PIN (plus fingerprint where available). A security question chosen at setup lets you recover access if the PIN is forgotten; a wrong PIN shakes and turns red. The PIN and answer are stored only as hashes in the device's secure storage.
 
 **Local Data** — All financial records (shopping lists, Udhar Khata entries, bills) are stored only on the user's device, encrypted at rest with AES-256, with the encryption key held in the Android Keystore / iOS Keychain.
 

@@ -24,6 +24,8 @@ class AppData extends ChangeNotifier {
   final List<Bill> bills = [];
 
   String userName = '';
+  String userPhone = '';
+  String userEmail = '';
   double monthlyBudget = 0;
 
   bool _initialized = false;
@@ -38,6 +40,8 @@ class AppData extends ChangeNotifier {
     contacts.addAll(await _storage.loadContacts());
     bills.addAll(await _storage.loadBills());
     userName = await _storage.loadUserName();
+    userPhone = await _storage.loadUserPhone();
+    userEmail = await _storage.loadUserEmail();
     monthlyBudget = await _storage.loadMonthlyBudget();
 
     _initialized = true;
@@ -53,6 +57,18 @@ class AppData extends ChangeNotifier {
     userName = name.trim();
     notifyListeners();
     await _storage.saveUserName(userName);
+  }
+
+  Future<void> setUserPhone(String phone) async {
+    userPhone = phone.trim();
+    notifyListeners();
+    await _storage.saveUserPhone(userPhone);
+  }
+
+  Future<void> setUserEmail(String email) async {
+    userEmail = email.trim();
+    notifyListeners();
+    await _storage.saveUserEmail(userEmail);
   }
 
   Future<void> setMonthlyBudget(double amount) async {
@@ -94,6 +110,16 @@ class AppData extends ChangeNotifier {
 
   void deleteShoppingList(String id) {
     shoppingLists.removeWhere((l) => l.id == id);
+    notifyListeners();
+    _storage.saveShoppingLists(shoppingLists);
+  }
+
+  /// Replaces a saved shopping list in place — used by the Edit flow
+  /// so a past list's items/prices/quantities can be corrected after
+  /// the fact, not just deleted and re-entered from scratch.
+  void updateShoppingList(ShoppingListModel updated) {
+    final idx = shoppingLists.indexWhere((l) => l.id == updated.id);
+    if (idx != -1) shoppingLists[idx] = updated;
     notifyListeners();
     _storage.saveShoppingLists(shoppingLists);
   }
@@ -260,6 +286,14 @@ class AppData extends ChangeNotifier {
     saveContacts();
   }
 
+  /// Deletes a single Udhar transaction from a contact's history —
+  /// for correcting a mis-entered amount/note without having to
+  /// delete the whole contact.
+  void deleteUdharEntry(Contact contact, String entryId) {
+    contact.entries.removeWhere((e) => e.id == entryId);
+    saveContacts();
+  }
+
   // ---------- Bills ----------
   void addBill(Bill b) {
     bills.add(b);
@@ -313,6 +347,20 @@ class AppData extends ChangeNotifier {
           isRecurring: true,
         ));
       }
+    }
+  }
+
+  /// Saves changes made to an existing bill in place (name, amount,
+  /// due date, recurring flag) — and re-arms its reminder so a
+  /// changed due date actually gets a notification at the new time.
+  void updateBill(Bill updated) {
+    final idx = bills.indexWhere((b) => b.id == updated.id);
+    if (idx != -1) bills[idx] = updated;
+    notifyListeners();
+    _storage.saveBills(bills);
+    NotificationService.instance.cancelBillReminder(updated);
+    if (!updated.isPaid) {
+      NotificationService.instance.scheduleBillReminder(updated);
     }
   }
 

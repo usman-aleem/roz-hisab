@@ -16,11 +16,19 @@ class BillsHomeScreen extends StatefulWidget {
 class _BillsHomeScreenState extends State<BillsHomeScreen> {
   final data = AppData.instance;
 
-  void _addBill() {
-    final nameCtrl = TextEditingController();
-    final amountCtrl = TextEditingController();
-    DateTime dueDate = DateTime.now().add(const Duration(days: 7));
-    bool recurring = false;
+  /// Shared form for both "Add Bill" and "Edit Bill" — pass
+  /// [existing] to pre-fill it and save changes in place instead of
+  /// creating a new one.
+  void _billForm({Bill? existing}) {
+    final isEditing = existing != null;
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    final amountCtrl = TextEditingController(
+        text: existing != null && existing.amount > 0
+            ? existing.amount.toStringAsFixed(0)
+            : '');
+    DateTime dueDate =
+        existing?.dueDate ?? DateTime.now().add(const Duration(days: 7));
+    bool recurring = existing?.isRecurring ?? false;
 
     showModalBottomSheet(
       context: context,
@@ -28,8 +36,8 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
@@ -40,15 +48,15 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Add Bill',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                Text(isEditing ? 'Edit Bill' : 'Add Bill',
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 14),
                 TextField(
                   controller: nameCtrl,
                   autofocus: true,
-                  decoration: const InputDecoration(
-                      hintText: 'Name (e.g. K-Electric)'),
+                  decoration:
+                      const InputDecoration(hintText: 'Name (e.g. K-Electric)'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -83,8 +91,7 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                         const Icon(Icons.calendar_today_outlined,
                             size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 10),
-                        Text(
-                            '${dueDate.day}/${dueDate.month}/${dueDate.year}'),
+                        Text('${dueDate.day}/${dueDate.month}/${dueDate.year}'),
                       ],
                     ),
                   ),
@@ -107,19 +114,28 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       if (nameCtrl.text.trim().isEmpty) return;
+                      final amount =
+                          double.tryParse(amountCtrl.text.trim()) ?? 0;
                       setState(() {
-                        data.addBill(Bill(
-                          id: const Uuid().v4(),
-                          name: nameCtrl.text.trim(),
-                          amount:
-                              double.tryParse(amountCtrl.text.trim()) ?? 0,
-                          dueDate: dueDate,
-                          isRecurring: recurring,
-                        ));
+                        if (isEditing) {
+                          existing!.name = nameCtrl.text.trim();
+                          existing.amount = amount;
+                          existing.dueDate = dueDate;
+                          existing.isRecurring = recurring;
+                          data.updateBill(existing);
+                        } else {
+                          data.addBill(Bill(
+                            id: const Uuid().v4(),
+                            name: nameCtrl.text.trim(),
+                            amount: amount,
+                            dueDate: dueDate,
+                            isRecurring: recurring,
+                          ));
+                        }
                       });
                       Navigator.pop(context);
                     },
-                    child: const Text('Save'),
+                    child: Text(isEditing ? 'Save Changes' : 'Save'),
                   ),
                 ),
               ],
@@ -139,7 +155,7 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
       appBar: AppBar(title: const Text('Bills')),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'billsFab',
-        onPressed: _addBill,
+        onPressed: () => _billForm(),
         backgroundColor: AppColors.accent,
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Bill'),
@@ -148,7 +164,8 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
           ? const EmptyState(
               icon: Icons.receipt_long_outlined,
               title: 'No bills added yet',
-              subtitle: 'Tap "Add Bill" — it\'ll remind\nyou automatically next time.',
+              subtitle:
+                  'Tap \"Add Bill\" — it\'ll remind\nyou automatically next time.',
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
@@ -162,6 +179,7 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                           bill: b,
                           onMarkPaid: () =>
                               setState(() => data.markBillPaid(b)),
+                          onTap: () => _billForm(existing: b),
                         ),
                       )),
                 ],
@@ -171,7 +189,11 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                   const SizedBox(height: 8),
                   ...paidBills.map((b) => _dismissibleBill(
                         b,
-                        BillTile(bill: b, onMarkPaid: () {}),
+                        BillTile(
+                          bill: b,
+                          onMarkPaid: () {},
+                          onTap: () => _billForm(existing: b),
+                        ),
                       )),
                 ],
               ],

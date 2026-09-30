@@ -28,8 +28,12 @@ personal data off the device.
   leaves the device and is never sent to Roz Hisab or anyone else.
 - If you turn on App Lock, your PIN is never stored in plain text —
   only its SHA-256 hash, inside the same secure, encrypted storage.
-- Your name and monthly budget (used only to personalize receipts
-  and the budget tracker) are stored locally as plain text, since
+  The same applies to the answer to your security question (used to
+  recover a forgotten PIN): only a hash of it is kept, never the
+  answer itself.
+- Your details (name, optional phone/email) and monthly budget (used
+  only to personalize receipts and the budget tracker) are stored
+  locally as plain text, since
   they contain no transaction detail.
 
 ## 3. Backups you create yourself
