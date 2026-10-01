@@ -130,7 +130,27 @@ class _ActiveListScreenState extends State<ActiveListScreen> {
     });
   }
 
-  void _removeItem(int index) => setState(() => _items.removeAt(index));
+  String _fmtQty(double q) =>
+      q == q.roundToDouble() ? q.toStringAsFixed(0) : q.toStringAsFixed(1);
+
+  /// Deletes an item but offers UNDO, so a wrong tap costs nothing.
+  void _removeItem(int index) {
+    final removed = _items[index];
+    setState(() => _items.removeAt(index));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('"${removed.name}" removed'),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'UNDO',
+            onPressed: () =>
+                setState(() => _items.insert(index.clamp(0, _items.length), removed)),
+          ),
+        ),
+      );
+  }
 
   double get _total => _items.fold(0, (sum, i) => sum + i.total);
 
@@ -298,35 +318,24 @@ class _ActiveListScreenState extends State<ActiveListScreen> {
                     itemCount: _items.length,
                     itemBuilder: (context, index) {
                       final item = _items[index];
-                      return Dismissible(
-                        key: ValueKey('${item.name}_$index'),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(
-                            color: AppColors.danger,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.delete_outline_rounded,
-                              color: Colors.white),
-                        ),
-                        onDismissed: (_) => _removeItem(index),
-                        child: InkWell(
-                          onTap: () => _editItem(index),
+                      return Container(
+                        key: ObjectKey(item),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBackground,
                           borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.cardBackground,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => _editItem(index),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -334,27 +343,62 @@ class _ActiveListScreenState extends State<ActiveListScreen> {
                                       Text(item.name,
                                           style: const TextStyle(
                                               fontWeight: FontWeight.w600)),
-                                      if (item.quantity != 1)
-                                        Text(
-                                          'x${item.quantity.toStringAsFixed(item.quantity == item.quantity.roundToDouble() ? 0 : 1)}',
-                                          style: const TextStyle(
-                                              fontSize: 11.5,
-                                              color: AppColors.textSecondary),
-                                        ),
+                                      Text(
+                                        '${_fmtQty(item.quantity)} x Rs. ${item.price.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                            fontSize: 11.5,
+                                            color: AppColors.textSecondary),
+                                      ),
                                     ],
                                   ),
                                 ),
-                                Text(
-                                  'Rs. ${item.total.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700),
-                                ),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.edit_outlined,
-                                    size: 15, color: AppColors.textMuted),
-                              ],
+                              ),
                             ),
-                          ),
+                            // Quick quantity - no need to open the editor
+                            _MiniBtn(
+                              icon: Icons.remove_rounded,
+                              onTap: item.quantity > 1
+                                  ? () => setState(() => item.quantity -= 1)
+                                  : null,
+                            ),
+                            SizedBox(
+                              width: 26,
+                              child: Text(
+                                _fmtQty(item.quantity),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
+                            ),
+                            _MiniBtn(
+                              icon: Icons.add_rounded,
+                              onTap: () => setState(() => item.quantity += 1),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 66,
+                              child: Text(
+                                'Rs. ${item.total.toStringAsFixed(0)}',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Edit',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => _editItem(index),
+                              icon: const Icon(Icons.edit_outlined,
+                                  size: 19, color: AppColors.primary),
+                            ),
+                            IconButton(
+                              tooltip: 'Delete',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => _removeItem(index),
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  size: 20, color: AppColors.danger),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -425,6 +469,33 @@ class _ActiveListScreenState extends State<ActiveListScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MiniBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _MiniBtn({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: enabled ? AppColors.primaryLight : AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon,
+            size: 16,
+            color: enabled ? AppColors.primaryDark : AppColors.textMuted),
       ),
     );
   }

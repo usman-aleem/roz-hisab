@@ -5,91 +5,152 @@ import '../models/bill.dart';
 import 'hover_card.dart';
 import 'status_pill.dart';
 
+/// One bill row.
+///
+/// TAP the row  -> [onTap] (opens the options sheet: Paid / Pending /
+///                 Upcoming / Send alert / Edit / Delete).
+/// TAP the tick -> [onQuickPaid] (one-tap "paid" shortcut).
 class BillTile extends StatelessWidget {
   final Bill bill;
-  final VoidCallback onMarkPaid;
+  final VoidCallback onTap;
+  final VoidCallback? onQuickPaid;
 
-  /// Tapping the tile (anywhere except the status pill, which keeps
-  /// its own "Mark Paid" action) opens this bill for editing.
-  final VoidCallback? onTap;
+  const BillTile({
+    super.key,
+    required this.bill,
+    required this.onTap,
+    this.onQuickPaid,
+  });
 
-  const BillTile(
-      {super.key, required this.bill, required this.onMarkPaid, this.onTap});
-
-  Color _statusColor() {
-    switch (bill.status) {
+  static Color colorFor(BillStatus s) {
+    switch (s) {
       case BillStatus.overdue:
         return AppColors.danger;
       case BillStatus.dueSoon:
         return AppColors.amber;
       case BillStatus.paid:
         return AppColors.success;
+      case BillStatus.pending:
+        return AppColors.primary;
       case BillStatus.upcoming:
         return AppColors.textMuted;
     }
   }
 
-  String _statusLabel() {
-    switch (bill.status) {
+  static String labelFor(BillStatus s) {
+    switch (s) {
       case BillStatus.overdue:
         return 'Overdue';
       case BillStatus.dueSoon:
         return 'Due Soon';
       case BillStatus.paid:
         return 'Paid';
+      case BillStatus.pending:
+        return 'Pending';
       case BillStatus.upcoming:
         return 'Upcoming';
     }
   }
 
+  static String dueText(Bill bill) {
+    final date = DateFormat('dd MMM').format(bill.dueDate);
+    if (bill.isPaid) return 'Due $date';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final due =
+        DateTime(bill.dueDate.year, bill.dueDate.month, bill.dueDate.day);
+    final diff = due.difference(today).inDays;
+    if (diff < 0) return '$date  •  ${-diff} din late';
+    if (diff == 0) return '$date  •  Aaj';
+    if (diff == 1) return '$date  •  Kal';
+    return '$date  •  $diff din baad';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor();
+    final status = bill.status;
+    final color = colorFor(status);
+    final paid = bill.isPaid;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: HoverCard(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.fromLTRB(8, 10, 14, 10),
           decoration: BoxDecoration(
-            color: AppColors.cardBackground,
+            color: paid ? AppColors.background : AppColors.cardBackground,
             borderRadius: BorderRadius.circular(AppTokens.radiusMd),
             border: Border.all(
-              color: bill.status == BillStatus.overdue
-                  ? AppColors.danger.withOpacity(0.4)
+              color: status == BillStatus.overdue
+                  ? AppColors.danger.withValues(alpha: 0.4)
                   : AppColors.border,
             ),
-            boxShadow: AppTokens.softShadow,
+            boxShadow: paid ? null : AppTokens.softShadow,
           ),
           child: Row(
             children: [
-              Container(width: 4, height: 40, color: color),
-              const SizedBox(width: 12),
+              InkWell(
+                onTap: onQuickPaid,
+                customBorder: const CircleBorder(),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: paid ? AppColors.success : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: paid ? AppColors.success : color,
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(Icons.check_rounded,
+                        size: 17,
+                        color: paid ? Colors.white : Colors.transparent),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Expanded(
+                        Flexible(
                           child: Text(
                             bill.name,
-                            style: const TextStyle(
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
+                              decoration:
+                                  paid ? TextDecoration.lineThrough : null,
+                              color: paid
+                                  ? AppColors.textMuted
+                                  : AppColors.textPrimary,
                             ),
                           ),
                         ),
-                        if (bill.isRecurring)
+                        if (bill.isRecurring) ...[
+                          const SizedBox(width: 6),
                           const Icon(Icons.repeat_rounded,
                               size: 14, color: AppColors.textMuted),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
-                      DateFormat('dd MMM').format(bill.dueDate),
-                      style: const TextStyle(
-                          fontSize: 12.5, color: AppColors.textSecondary),
+                      dueText(bill),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: status == BillStatus.overdue
+                            ? AppColors.danger
+                            : AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -98,15 +159,14 @@ class BillTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Rs. ${bill.amount.toStringAsFixed(0)}',
+                    bill.amount > 0
+                        ? 'Rs. ${bill.amount.toStringAsFixed(0)}'
+                        : '—',
                     style: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 14),
                   ),
-                  const SizedBox(height: 6),
-                  GestureDetector(
-                    onTap: bill.isPaid ? null : onMarkPaid,
-                    child: StatusPill(text: _statusLabel(), color: color),
-                  ),
+                  const SizedBox(height: 5),
+                  StatusPill(text: labelFor(status), color: color),
                 ],
               ),
             ],

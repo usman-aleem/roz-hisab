@@ -38,7 +38,7 @@ class BuyAgainRow extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.accentLight,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.accent.withOpacity(0.25)),
+                border: Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

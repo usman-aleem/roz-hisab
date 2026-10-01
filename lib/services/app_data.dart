@@ -124,6 +124,13 @@ class AppData extends ChangeNotifier {
     _storage.saveShoppingLists(shoppingLists);
   }
 
+  /// Puts a deleted list back at its old position (used by Undo).
+  void restoreShoppingList(int index, ShoppingListModel list) {
+    shoppingLists.insert(index.clamp(0, shoppingLists.length), list);
+    notifyListeners();
+    _storage.saveShoppingLists(shoppingLists);
+  }
+
   /// Total shopping spend per month for the last 6 months, oldest
   /// first — used to draw the spending trend on the Home dashboard.
   Map<String, double> monthlySpendLast6Months() {
@@ -146,8 +153,18 @@ class AppData extends ChangeNotifier {
 
   String _monthLabel(DateTime d) {
     const names = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return names[d.month - 1];
   }
@@ -239,6 +256,51 @@ class AppData extends ChangeNotifier {
     _storage.saveContacts(contacts);
   }
 
+  /// FAST PATH for lazy users: one call creates the person AND their
+  /// first entry ("Ali - 500 - I Gave") so nobody has to open a
+  /// second screen just to log the money.
+  Contact addContactWithEntry({
+    required String name,
+    String phone = '',
+    UdharType? type,
+    double amount = 0,
+    String note = '',
+  }) {
+    final c = Contact(id: const Uuid().v4(), name: name, phone: phone);
+    if (type != null && amount > 0) {
+      c.entries.add(UdharEntry(
+        id: const Uuid().v4(),
+        type: type,
+        amount: amount,
+        note: note,
+      ));
+    }
+    contacts.add(c);
+    notifyListeners();
+    _storage.saveContacts(contacts);
+    return c;
+  }
+
+  /// One-line "I Gave / I Took" for an existing person - used by the
+  /// quick buttons directly on the Udhar list.
+  void addUdharEntry(Contact contact, UdharType type, double amount,
+      {String note = ''}) {
+    if (amount <= 0) return;
+    contact.entries.add(UdharEntry(
+      id: const Uuid().v4(),
+      type: type,
+      amount: amount,
+      note: note,
+    ));
+    saveContacts();
+  }
+
+  void restoreContact(int index, Contact c) {
+    contacts.insert(index.clamp(0, contacts.length), c);
+    notifyListeners();
+    _storage.saveContacts(contacts);
+  }
+
   void deleteContact(String id) {
     contacts.removeWhere((c) => c.id == id);
     notifyListeners();
@@ -275,8 +337,7 @@ class AppData extends ChangeNotifier {
     // owe them, a payment I make also nets the balance toward zero
     // via a theyOweMe-type entry. Either way it's "the opposite of
     // whatever put the current balance where it is".
-    final type =
-        bal >= 0 ? UdharType.iOweThem : UdharType.theyOweMe;
+    final type = bal >= 0 ? UdharType.iOweThem : UdharType.theyOweMe;
     contact.entries.add(UdharEntry(
       id: const Uuid().v4(),
       type: type,
@@ -324,12 +385,13 @@ class AppData extends ChangeNotifier {
   /// electricity bill paid and then completely forget to re-add it
   /// next month, so the reminder silently stops working right when
   /// it's needed again.
-  void markBillPaid(Bill bill) {
+  Bill? markBillPaid(Bill bill) {
     bill.isPaid = true;
     notifyListeners();
     _storage.saveBills(bills);
     NotificationService.instance.cancelBillReminder(bill);
 
+    Bill? created;
     if (bill.isRecurring) {
       final due = bill.dueDate;
       final nextDue = DateTime(due.year, due.month + 1, due.day);
@@ -339,15 +401,37 @@ class AppData extends ChangeNotifier {
           b.dueDate.month == nextDue.month &&
           b.dueDate.day == nextDue.day);
       if (!alreadyExists) {
-        addBill(Bill(
+        created = Bill(
           id: const Uuid().v4(),
           name: bill.name,
           amount: bill.amount,
           dueDate: nextDue,
           isRecurring: true,
-        ));
+        );
+        addBill(created);
       }
     }
+    return created;
+  }
+
+  /// Undo for "tap = paid": flips a bill back to unpaid and removes
+  /// the auto-created next-month copy of a recurring bill.
+  void markBillUnpaid(Bill bill, {Bill? autoCreatedNext}) {
+    bill.isPaid = false;
+    if (autoCreatedNext != null) {
+      bills.removeWhere((b) => b.id == autoCreatedNext.id);
+      NotificationService.instance.cancelBillReminder(autoCreatedNext);
+    }
+    notifyListeners();
+    _storage.saveBills(bills);
+    NotificationService.instance.scheduleBillReminder(bill);
+  }
+
+  void restoreBill(int index, Bill b) {
+    bills.insert(index.clamp(0, bills.length), b);
+    notifyListeners();
+    _storage.saveBills(bills);
+    if (!b.isPaid) NotificationService.instance.scheduleBillReminder(b);
   }
 
   /// Saves changes made to an existing bill in place (name, amount,
@@ -365,6 +449,14 @@ class AppData extends ChangeNotifier {
   }
 
   void refresh() => notifyListeners();
+
+  double get netBalance => totalTheyOweMe - totalIOweThem;
+
+  double get totalUnpaidBillsAmount =>
+      bills.where((b) => !b.isPaid).fold(0.0, (s, b) => s + b.amount);
+
+  int get overdueBillCount =>
+      bills.where((b) => b.status == BillStatus.overdue).length;
 
   /// Wipes everything on-device — used only if the user explicitly
   /// asks to reset the app.

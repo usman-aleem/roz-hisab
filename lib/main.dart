@@ -1,4 +1,7 @@
+
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 import 'config/theme.dart';
 import 'screens/main_shell.dart';
 import 'screens/auth/app_lock_gate.dart';
@@ -6,8 +9,15 @@ import 'screens/auth/pin_lock_screen.dart';
 import 'services/app_data.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
+import 'firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const RozHisabApp());
 }
 
@@ -50,6 +60,7 @@ class _AppLoaderState extends State<_AppLoader> {
     await NotificationService.instance.init();
     await AppData.instance.init();
     final hasPin = await _auth.hasPin();
+
     if (mounted) {
       setState(() {
         _dataReady = true;
@@ -64,7 +75,9 @@ class _AppLoaderState extends State<_AppLoader> {
       return const Scaffold(
         backgroundColor: AppColors.background,
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+          ),
         ),
       );
     }
@@ -77,6 +90,8 @@ class _AppLoaderState extends State<_AppLoader> {
 
     // AppLockGate keeps watching in the background — if App Lock is
     // on and the app is backgrounded/resumed later, it re-locks.
-    return const AppLockGate(child: MainShell());
+    return const AppLockGate(
+      child: MainShell(),
+    );
   }
 }

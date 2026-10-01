@@ -55,7 +55,7 @@ class AppTokens {
   /// shadow, used on key cards (summary cards, receipt, balance card).
   static List<BoxShadow> get softShadow => [
         BoxShadow(
-          color: AppColors.textPrimary.withOpacity(0.05),
+          color: AppColors.textPrimary.withValues(alpha: 0.05),
           blurRadius: 16,
           offset: const Offset(0, 4),
         ),
@@ -143,7 +143,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accent,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.accent.withOpacity(0.4),
+          disabledBackgroundColor: AppColors.accent.withValues(alpha: 0.4),
           padding: const EdgeInsets.symmetric(vertical: 15),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTokens.radiusMd),

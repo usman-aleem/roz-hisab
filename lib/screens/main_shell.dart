@@ -66,7 +66,7 @@ class _PremiumNavBar extends StatelessWidget {
         color: AppColors.cardBackground,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryDark.withOpacity(0.08),
+            color: AppColors.primaryDark.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, -6),
           ),

@@ -78,7 +78,7 @@ class SpendingTrendCard extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: isLast
                                   ? AppColors.accent
-                                  : AppColors.primary.withOpacity(0.35),
+                                  : AppColors.primary.withValues(alpha: 0.35),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),

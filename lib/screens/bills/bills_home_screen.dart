@@ -4,6 +4,7 @@ import '../../config/theme.dart';
 import '../../models/bill.dart';
 import '../../services/app_data.dart';
 import '../../widgets/bill_tile.dart';
+import '../../widgets/bill_options_sheet.dart';
 import '../../widgets/status_pill.dart';
 
 class BillsHomeScreen extends StatefulWidget {
@@ -58,6 +59,29 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                   decoration:
                       const InputDecoration(hintText: 'Name (e.g. K-Electric)'),
                 ),
+                if (!isEditing) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 0,
+                    children: [
+                      'Bijli',
+                      'Gas',
+                      'Pani',
+                      'Internet',
+                      'Rent',
+                      'School Fee',
+                    ]
+                        .map((n) => ActionChip(
+                              label:
+                                  Text(n, style: const TextStyle(fontSize: 12)),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () =>
+                                  setModalState(() => nameCtrl.text = n),
+                            ))
+                        .toList(),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 TextField(
                   controller: amountCtrl,
@@ -71,8 +95,10 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                     final picked = await showDatePicker(
                       context: context,
                       initialDate: dueDate,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      firstDate: DateTime.now()
+                          .subtract(const Duration(days: 365 * 2)),
+                      lastDate:
+                          DateTime.now().add(const Duration(days: 365 * 2)),
                     );
                     if (picked != null) {
                       setModalState(() => dueDate = picked);
@@ -118,8 +144,11 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                           double.tryParse(amountCtrl.text.trim()) ?? 0;
                       setState(() {
                         if (isEditing) {
-                          existing!.name = nameCtrl.text.trim();
+                          existing.name = nameCtrl.text.trim();
                           existing.amount = amount;
+                          if (existing.dueDate != dueDate) {
+                            existing.manualStatus = '';
+                          }
                           existing.dueDate = dueDate;
                           existing.isRecurring = recurring;
                           data.updateBill(existing);
@@ -147,9 +176,60 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    data.addListener(_onData);
+  }
+
+  @override
+  void dispose() {
+    data.removeListener(_onData);
+    super.dispose();
+  }
+
+  void _onData() {
+    if (mounted) setState(() {});
+  }
+
+  /// Tick circle = one-tap paid (with UNDO). Tapping the ROW opens
+  /// the full options sheet (Paid / Pending / Upcoming / Alert...).
+  void _quickPaid(Bill b) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    if (b.isPaid) {
+      data.markBillUnpaid(b);
+      messenger.showSnackBar(SnackBar(
+        content: Text('"${b.name}" marked unpaid'),
+        duration: const Duration(seconds: 3),
+      ));
+      return;
+    }
+    final next = data.markBillPaid(b);
+    messenger.showSnackBar(SnackBar(
+      content: Text(next == null
+          ? '"${b.name}" paid ✅'
+          : '"${b.name}" paid ✅  Next month added'),
+      duration: const Duration(seconds: 5),
+      action: SnackBarAction(
+        label: 'UNDO',
+        onPressed: () => data.markBillUnpaid(b, autoCreatedNext: next),
+      ),
+    ));
+  }
+
+  Widget _tile(Bill b) => BillTile(
+        key: ValueKey(b.id),
+        bill: b,
+        onQuickPaid: () => _quickPaid(b),
+        onTap: () =>
+            showBillOptions(context, b, onEdit: () => _billForm(existing: b)),
+      );
+
+  @override
   Widget build(BuildContext context) {
     final bills = data.upcomingUnpaidBills;
-    final paidBills = data.bills.where((b) => b.isPaid).toList();
+    final paidBills = data.bills.where((b) => b.isPaid).toList()
+      ..sort((a, b) => b.dueDate.compareTo(a.dueDate));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Bills')),
@@ -157,6 +237,7 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
         heroTag: 'billsFab',
         onPressed: () => _billForm(),
         backgroundColor: AppColors.accent,
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Bill'),
       ),
@@ -165,77 +246,32 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
               icon: Icons.receipt_long_outlined,
               title: 'No bills added yet',
               subtitle:
-                  'Tap \"Add Bill\" — it\'ll remind\nyou automatically next time.',
+                  'Tap "Add Bill" — it\'ll remind\nyou automatically next time.',
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
               children: [
                 if (bills.isNotEmpty) ...[
-                  const _SectionLabel('Pending'),
+                  Row(
+                    children: [
+                      const _SectionLabel('Pending'),
+                      const Spacer(),
+                      const Text('Bill par tap = options',
+                          style: TextStyle(
+                              fontSize: 11.5, color: AppColors.textMuted)),
+                    ],
+                  ),
                   const SizedBox(height: 8),
-                  ...bills.map((b) => _dismissibleBill(
-                        b,
-                        BillTile(
-                          bill: b,
-                          onMarkPaid: () =>
-                              setState(() => data.markBillPaid(b)),
-                          onTap: () => _billForm(existing: b),
-                        ),
-                      )),
+                  ...bills.map(_tile),
                 ],
                 if (paidBills.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const _SectionLabel('Paid'),
                   const SizedBox(height: 8),
-                  ...paidBills.map((b) => _dismissibleBill(
-                        b,
-                        BillTile(
-                          bill: b,
-                          onMarkPaid: () {},
-                          onTap: () => _billForm(existing: b),
-                        ),
-                      )),
+                  ...paidBills.map(_tile),
                 ],
               ],
             ),
-    );
-  }
-}
-
-extension _BillsHomeScreenDismiss on _BillsHomeScreenState {
-  Widget _dismissibleBill(Bill b, Widget child) {
-    return Dismissible(
-      key: ValueKey(b.id),
-      direction: DismissDirection.endToStart,
-      confirmDismiss: (_) => showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Delete this bill?'),
-          content: Text('"${b.name}" will be permanently deleted.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
-      ),
-      onDismissed: (_) => setState(() => data.deleteBill(b.id)),
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: AppColors.danger,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
-      ),
-      child: child,
     );
   }
 }

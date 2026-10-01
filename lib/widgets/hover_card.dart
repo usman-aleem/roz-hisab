@@ -44,7 +44,7 @@ class _HoverCardState extends State<HoverCard> {
           boxShadow: _hovering
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.14),
+                    color: AppColors.primary.withValues(alpha: 0.14),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -57,7 +57,7 @@ class _HoverCardState extends State<HoverCard> {
           child: InkWell(
             onTap: widget.onTap,
             borderRadius: radius,
-            hoverColor: AppColors.primary.withOpacity(0.03),
+            hoverColor: AppColors.primary.withValues(alpha: 0.03),
             child: widget.child,
           ),
         ),

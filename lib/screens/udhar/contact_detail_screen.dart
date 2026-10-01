@@ -103,7 +103,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                           onPressed: () {
                             Navigator.pop(context);
                             AppData.instance
-                                .deleteUdharEntry(widget.contact, existing!.id);
+                                .deleteUdharEntry(widget.contact, existing.id);
                             setState(() {});
                           },
                           style: OutlinedButton.styleFrom(
@@ -121,7 +121,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                           if (amount == null || amount <= 0) return;
                           setState(() {
                             if (isEditing) {
-                              existing!.type = selectedType;
+                              existing.type = selectedType;
                               existing.amount = amount;
                               existing.note = noteCtrl.text.trim();
                             } else {
@@ -413,7 +413,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
