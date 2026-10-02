@@ -1,23 +1,15 @@
-
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-
 import 'config/theme.dart';
 import 'screens/main_shell.dart';
 import 'screens/auth/app_lock_gate.dart';
 import 'screens/auth/pin_lock_screen.dart';
+import 'screens/auth/welcome_screen.dart';
 import 'services/app_data.dart';
 import 'services/auth_service.dart';
+import 'services/cloud_service.dart';
 import 'services/notification_service.dart';
-import 'firebase_options.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
+void main() {
   runApp(const RozHisabApp());
 }
 
@@ -35,9 +27,10 @@ class RozHisabApp extends StatelessWidget {
   }
 }
 
-/// 1. Loads persisted data (SharedPreferences).
-/// 2. Checks whether App Lock (PIN) is enabled — if so, shows the
-///    lock screen before anything else in the app is reachable.
+/// 1. Starts Firebase (optional - app still works if it isn't set up).
+/// 2. Loads local data, then (if logged in) syncs from the cloud.
+/// 3. First launch -> Welcome screen asks THIS user's name.
+/// 4. App Lock (PIN) check.
 class _AppLoader extends StatefulWidget {
   const _AppLoader();
 
@@ -49,6 +42,7 @@ class _AppLoaderState extends State<_AppLoader> {
   final _auth = AuthService();
   bool _dataReady = false;
   bool _locked = false;
+  bool _needsWelcome = false;
 
   @override
   void initState() {
@@ -58,12 +52,22 @@ class _AppLoaderState extends State<_AppLoader> {
 
   Future<void> _boot() async {
     await NotificationService.instance.init();
+    await CloudService.instance.init();
     await AppData.instance.init();
-    final hasPin = await _auth.hasPin();
+    await CloudService.instance
+        .startupSync(AppData.instance)
+        .timeout(const Duration(seconds: 12), onTimeout: () {});
 
+    final data = AppData.instance;
+    // Existing users (already have a name) skip the welcome screen.
+    if (!data.onboarded && data.userName.trim().isNotEmpty) {
+      await data.completeOnboarding();
+    }
+    final hasPin = await _auth.hasPin();
     if (mounted) {
       setState(() {
         _dataReady = true;
+        _needsWelcome = !data.onboarded;
         _locked = hasPin;
       });
     }
@@ -75,10 +79,14 @@ class _AppLoaderState extends State<_AppLoader> {
       return const Scaffold(
         backgroundColor: AppColors.background,
         body: Center(
-          child: CircularProgressIndicator(
-            color: AppColors.primary,
-          ),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
+      );
+    }
+
+    if (_needsWelcome) {
+      return WelcomeScreen(
+        onDone: () => setState(() => _needsWelcome = false),
       );
     }
 
@@ -88,10 +96,6 @@ class _AppLoaderState extends State<_AppLoader> {
       );
     }
 
-    // AppLockGate keeps watching in the background — if App Lock is
-    // on and the app is backgrounded/resumed later, it re-locks.
-    return const AppLockGate(
-      child: MainShell(),
-    );
+    return const AppLockGate(child: MainShell());
   }
 }

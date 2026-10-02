@@ -27,6 +27,24 @@ class Contact {
       ? null
       : entries.map((e) => e.date).reduce((a, b) => a.isAfter(b) ? a : b);
 
+  /// A due-date only matters while money is still outstanding in
+  /// the SAME direction as that entry.
+  bool isDueActive(UdharEntry e) {
+    if (e.dueDate == null || e.isSettled) return false;
+    final bal = balance;
+    if (bal == 0) return false;
+    return bal > 0
+        ? e.type == UdharType.theyOweMe
+        : e.type == UdharType.iOweThem;
+  }
+
+  /// The soonest active due-date entry (null if none).
+  UdharEntry? get nextDueEntry {
+    final list = entries.where(isDueActive).toList()
+      ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+    return list.isEmpty ? null : list.first;
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,

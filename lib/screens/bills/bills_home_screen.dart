@@ -65,9 +65,9 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                     spacing: 6,
                     runSpacing: 0,
                     children: [
-                      'Bijli',
+                      'Electricity',
                       'Gas',
-                      'Pani',
+                      'Water',
                       'Internet',
                       'Rent',
                       'School Fee',
@@ -144,7 +144,7 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                           double.tryParse(amountCtrl.text.trim()) ?? 0;
                       setState(() {
                         if (isEditing) {
-                          existing.name = nameCtrl.text.trim();
+                          existing!.name = nameCtrl.text.trim();
                           existing.amount = amount;
                           if (existing.dueDate != dueDate) {
                             existing.manualStatus = '';
@@ -256,7 +256,7 @@ class _BillsHomeScreenState extends State<BillsHomeScreen> {
                     children: [
                       const _SectionLabel('Pending'),
                       const Spacer(),
-                      const Text('Bill par tap = options',
+                      const Text('Tap a bill for options',
                           style: TextStyle(
                               fontSize: 11.5, color: AppColors.textMuted)),
                     ],

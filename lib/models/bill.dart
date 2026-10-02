@@ -1,4 +1,4 @@
-enum BillStatus { upcoming, dueSoon, overdue, paid }
+enum BillStatus { upcoming, pending, dueSoon, overdue, paid }
 
 class Bill {
   String id;
@@ -8,6 +8,10 @@ class Bill {
   bool isRecurring; // e.g. same date every month
   bool isPaid;
 
+  /// What the user picked from the tap-menu: '' (automatic),
+  /// 'pending' or 'upcoming'. Overdue and Paid always win.
+  String manualStatus;
+
   Bill({
     required this.id,
     required this.name,
@@ -15,6 +19,7 @@ class Bill {
     required this.dueDate,
     this.isRecurring = false,
     this.isPaid = false,
+    this.manualStatus = '',
   });
 
   BillStatus get status {
@@ -24,6 +29,8 @@ class Bill {
     final due = DateTime(dueDate.year, dueDate.month, dueDate.day);
     final diff = due.difference(today).inDays;
     if (diff < 0) return BillStatus.overdue;
+    if (manualStatus == 'pending') return BillStatus.pending;
+    if (manualStatus == 'upcoming') return BillStatus.upcoming;
     if (diff <= 3) return BillStatus.dueSoon;
     return BillStatus.upcoming;
   }
@@ -35,6 +42,7 @@ class Bill {
         'dueDate': dueDate.toIso8601String(),
         'isRecurring': isRecurring,
         'isPaid': isPaid,
+        'manualStatus': manualStatus,
       };
 
   factory Bill.fromJson(Map<String, dynamic> json) => Bill(
@@ -44,5 +52,6 @@ class Bill {
         dueDate: DateTime.parse(json['dueDate']),
         isRecurring: json['isRecurring'] ?? false,
         isPaid: json['isPaid'] ?? false,
+        manualStatus: json['manualStatus'] ?? '',
       );
 }

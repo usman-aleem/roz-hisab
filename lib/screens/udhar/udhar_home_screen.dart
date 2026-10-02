@@ -59,11 +59,11 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
             final name = nameCtrl.text.trim();
             final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
             if (name.isEmpty) {
-              setModalState(() => error = 'Naam likhein');
+              setModalState(() => error = 'Enter a name');
               return;
             }
             if (amount <= 0) {
-              setModalState(() => error = 'Amount likhein');
+              setModalState(() => error = 'Enter an amount');
               return;
             }
 
@@ -87,8 +87,8 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
               ..hideCurrentSnackBar()
               ..showSnackBar(SnackBar(
                 content: Text(t == UdharType.theyOweMe
-                    ? '$name ko Rs. ${amount.toStringAsFixed(0)} diye ✅'
-                    : '$name se Rs. ${amount.toStringAsFixed(0)} liye ✅'),
+                    ? 'Recorded: you gave $name Rs. ${amount.toStringAsFixed(0)}'
+                    : 'Recorded: you took Rs. ${amount.toStringAsFixed(0)} from $name'),
                 duration: const Duration(seconds: 3),
               ));
           }
@@ -107,7 +107,7 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Naya Udhar',
+                    const Text('New Entry',
                         style: TextStyle(
                             fontSize: 17, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 14),
@@ -116,7 +116,7 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
                       autofocus: true,
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(hintText: 'Naam'),
+                      decoration: const InputDecoration(hintText: 'Name'),
                       onChanged: (v) {
                         final q = v.trim().toLowerCase();
                         setModalState(() {
@@ -173,15 +173,16 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
                       const SizedBox(height: 10),
                       TextField(
                         controller: noteCtrl,
-                        decoration: const InputDecoration(
-                            hintText: 'Note (optional) — e.g. chai'),
+                        decoration:
+                            const InputDecoration(hintText: 'Note (optional)'),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: phoneCtrl,
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(
-                            hintText: 'Phone (optional — WhatsApp reminder)'),
+                            hintText:
+                                'Phone (optional, for WhatsApp reminders)'),
                       ),
                     ] else
                       Align(
@@ -226,7 +227,7 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'I Gave = maine diye (mujhe milenge)  •  I Took = maine liye (mujhe dene hain)',
+                      'I Gave = you lent money (they owe you)  •  I Took = you borrowed (you owe them)',
                       style:
                           TextStyle(fontSize: 11, color: AppColors.textMuted),
                     ),
@@ -258,14 +259,14 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
             .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Udhar Khata')),
+      appBar: AppBar(title: const Text('Ledger')),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'udharFab',
         onPressed: _addSheet,
         backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Naya Udhar'),
+        label: const Text('New Entry'),
       ),
       body: Column(
         children: [
@@ -298,7 +299,7 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
                 controller: _searchCtrl,
                 onChanged: (v) => setState(() => _query = v.trim()),
                 decoration: InputDecoration(
-                  hintText: 'Search naam',
+                  hintText: 'Search by name',
                   isDense: true,
                   prefixIcon: const Icon(Icons.search_rounded, size: 20),
                   suffixIcon: _query.isEmpty
@@ -319,7 +320,7 @@ class _UdharHomeScreenState extends State<UdharHomeScreen> {
                     icon: Icons.people_alt_outlined,
                     title: 'No entries yet',
                     subtitle:
-                        'Tap "Naya Udhar" — naam aur amount\nlikho, bas ho gaya.',
+                        'Tap "New Entry", add a name and an\namount, and you are done.',
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
@@ -353,7 +354,7 @@ class _TotalChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(

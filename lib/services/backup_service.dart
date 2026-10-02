@@ -1,27 +1,31 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/bill.dart';
 import '../models/contact.dart';
+import '../models/daily_item.dart';
 import '../models/shopping_list.dart';
 import 'app_data.dart';
+import 'pdf_service.dart';
 
-/// Export / Import all app data as a single JSON file.
-///
-/// Built to work identically on mobile AND web:
-/// - Export uses `XFile.fromData` (in-memory bytes) instead of writing
-///   to a temp folder first — on mobile this opens the native share
-///   sheet, on web it triggers a browser download. No `path_provider`
-///   needed (which isn't supported on web anyway).
-/// - Import reads file bytes directly from `file_picker` (`withData:
-///   true`), which works the same on mobile and web — no raw file
-///   path handling required.
-///
-/// WHY THIS MATTERS: all data lives only on this device/browser. If
-/// the phone is lost/reset, the browser storage is cleared, or the
-/// app/site is uninstalled, everything — including Udhar Khata
-/// balances — is gone permanently. Regular backups are the safety net.
+/// Backup is now ONE TAP:
+///  - [exportPdf]  -> a readable PDF of ALL your data (shopping, udhar,
+///                    bills, daily) - downloads on the website, share
+///                    sheet on phone.
+///  - [exportBackup] -> a .json restore file (a PDF can't be re-imported).
+///  - [importBackup] -> restores from that .json.
 class BackupService {
+  static String _dateTag() => DateTime.now().toIso8601String().split('T').first;
+
+  static Future<void> exportPdf() async {
+    final bytes = await PdfService.buildBackupReport(AppData.instance);
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'roz_hisab_backup_${_dateTag()}.pdf',
+    );
+  }
+
   static Future<void> exportBackup() async {
     final data = AppData.instance;
     final backup = {
@@ -30,52 +34,53 @@ class BackupService {
       'shoppingLists': data.shoppingLists.map((l) => l.toJson()).toList(),
       'contacts': data.contacts.map((c) => c.toJson()).toList(),
       'bills': data.bills.map((b) => b.toJson()).toList(),
+      'dailyItems': data.dailyItems.map((d) => d.toJson()).toList(),
     };
 
-    final jsonStr = const JsonEncoder.withIndent('  ').convert(backup);
-    final bytes = utf8.encode(jsonStr);
-    final dateTag = DateTime.now().toIso8601String().split('T').first;
-    final fileName = 'roz_hisab_backup_$dateTag.json';
-
+    final bytes =
+        utf8.encode(const JsonEncoder.withIndent('  ').convert(backup));
     await Share.shareXFiles(
       [
         XFile.fromData(
           bytes,
-          name: fileName,
+          name: 'roz_hisab_restore_${_dateTag()}.json',
           mimeType: 'application/json',
         ),
       ],
-      text: 'Roz Hisab backup — $dateTag',
+      text: 'Roz Hisab restore file - ${_dateTag()}',
     );
   }
 
-  /// Lets the user pick a previously exported .json file and restores
-  /// it, REPLACING current data. Returns true if a file was picked
-  /// and successfully restored.
   static Future<bool> importBackup() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
-      withData: true, // ensures bytes are available on web too
+      withData: true,
     );
     if (result == null || result.files.single.bytes == null) return false;
 
-    final jsonStr = utf8.decode(result.files.single.bytes!);
-    final Map<String, dynamic> backup = jsonDecode(jsonStr);
+    final Map<String, dynamic> backup =
+        jsonDecode(utf8.decode(result.files.single.bytes!));
+
+    List<dynamic> listOf(String key) => (backup[key] as List?) ?? const [];
 
     final data = AppData.instance;
     data.shoppingLists
       ..clear()
-      ..addAll((backup['shoppingLists'] as List)
+      ..addAll(listOf('shoppingLists')
           .map((e) => ShoppingListModel.fromJson(e as Map<String, dynamic>)));
     data.contacts
       ..clear()
-      ..addAll((backup['contacts'] as List)
+      ..addAll(listOf('contacts')
           .map((e) => Contact.fromJson(e as Map<String, dynamic>)));
     data.bills
       ..clear()
-      ..addAll((backup['bills'] as List)
-          .map((e) => Bill.fromJson(e as Map<String, dynamic>)));
+      ..addAll(
+          listOf('bills').map((e) => Bill.fromJson(e as Map<String, dynamic>)));
+    data.dailyItems
+      ..clear()
+      ..addAll(listOf('dailyItems')
+          .map((e) => DailyItem.fromJson(e as Map<String, dynamic>)));
 
     await data.persistAll();
     data.refresh();

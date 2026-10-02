@@ -76,62 +76,34 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               urgentCount: urgent,
               onTap: data.userName.isEmpty ? _openSettings : null,
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _QuickAction(
-                    icon: Icons.shopping_basket_rounded,
-                    label: 'Kharid',
-                    color: AppColors.primary,
-                    onTap: () => _go(1)),
-                _QuickAction(
-                    icon: Icons.people_alt_rounded,
-                    label: 'Udhar',
-                    color: AppColors.success,
-                    onTap: () => _go(2)),
-                _QuickAction(
-                    icon: Icons.receipt_long_rounded,
-                    label: 'Bills',
-                    color: AppColors.amber,
-                    onTap: () => _go(3)),
-                _QuickAction(
-                    icon: Icons.calendar_month_rounded,
-                    label: 'Daily',
-                    color: AppColors.accent,
-                    onTap: () => _go(4)),
-              ],
-            ),
             const SizedBox(height: 22),
-            const _SectionTitle('Hisab ek nazar mein'),
+            const _SectionTitle('Overview'),
             const SizedBox(height: 10),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.45,
-              children: [
+            _StatsGrid(
+              cards: [
                 SummaryCard(
-                  label: "Aaj ka kharcha",
+                  label: "Today's spending",
                   value: data.todaySpend,
                   icon: Icons.shopping_basket_outlined,
                   color: AppColors.primary,
-                  hint: 'Is mahine: Rs. ${data.currentMonthSpend.toStringAsFixed(0)}',
+                  hint:
+                      'This month: Rs. ${data.currentMonthSpend.toStringAsFixed(0)}',
                   onTap: () => _go(1),
                 ),
                 SummaryCard(
-                  label: "Mujhe milne hain",
+                  label: 'To receive',
                   value: data.totalTheyOweMe,
                   icon: Icons.south_west_rounded,
                   color: AppColors.success,
+                  hint: 'Owed to you',
                   onTap: () => _go(2),
                 ),
                 SummaryCard(
-                  label: 'Mujhe dene hain',
+                  label: 'To pay',
                   value: data.totalIOweThem,
                   icon: Icons.north_east_rounded,
                   color: AppColors.danger,
+                  hint: 'You owe others',
                   onTap: () => _go(2),
                 ),
                 SummaryCard(
@@ -142,7 +114,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   color: AppColors.amber,
                   hint: data.overdueBillCount > 0
                       ? '${data.overdueBillCount} overdue'
-                      : 'Koi overdue nahi',
+                      : 'None overdue',
                   onTap: () => _go(3),
                 ),
               ],
@@ -150,8 +122,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             const SizedBox(height: 22),
             _RemindersCard(
               items: reminders.take(5).toList(),
-              onTap: (r) =>
-                  _go(r.kind == ReminderKind.bill ? 3 : 2),
+              onTap: (r) => _go(r.kind == ReminderKind.bill ? 3 : 2),
             ),
             if (data.dailyItems.isNotEmpty) ...[
               const SizedBox(height: 16),
@@ -200,133 +171,149 @@ class _GreetingBanner extends StatelessWidget {
     this.onTap,
   });
 
+  static String _cap(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
   @override
   Widget build(BuildContext context) {
-    final first = name.trim().isEmpty ? '' : name.trim().split(' ').first;
+    final first = name.trim().isEmpty ? '' : _cap(name.trim().split(' ').first);
     final hour = DateTime.now().hour;
     final salam = hour < 12
-        ? 'Subah bakhair'
-        : (hour < 17 ? 'Assalam o Alaikum' : 'Shaam bakhair');
+        ? 'Good morning'
+        : (hour < 17 ? 'Good afternoon' : 'Good evening');
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 16, 8, 8),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primaryDark, AppColors.primary, Color(0xFF0D7C74)],
-          ),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.28),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(salam,
-                      style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(
-                    first.isEmpty ? 'Hey dost 👋' : 'Hey $first 👋',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      urgentCount > 0
-                          ? '⚠️ $urgentCount cheez ka waqt aa gaya'
-                          : '✅ Sab kuch control mein',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    first.isEmpty
-                        ? 'Naam set karne ke liye tap karein'
-                        : DateFormat('EEEE, dd MMM').format(DateTime.now()),
-                    style: const TextStyle(color: Colors.white60, fontSize: 11.5),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-            const HisabCharacter(),
-          ],
-        ),
-      ),
-    );
-  }
-}
+    return LayoutBuilder(builder: (context, box) {
+      // Phones are narrow: shrink the character, keep text readable.
+      final narrow = box.maxWidth < 380;
+      final scale = narrow ? 0.72 : 1.0;
 
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
+      return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Icon(icon, color: color, size: 26),
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(16, 16, narrow ? 4 : 8, 10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primaryDark,
+                AppColors.primary,
+                Color(0xFF0D7C74)
+              ],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.25),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
-              const SizedBox(height: 6),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(salam,
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        first.isEmpty ? 'Hello' : 'Hello, $first',
+                        maxLines: 1,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.16),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            urgentCount > 0
+                                ? Icons.notifications_active_outlined
+                                : Icons.check_circle_outline_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              urgentCount > 0
+                                  ? '$urgentCount ${urgentCount == 1 ? 'item needs' : 'items need'} attention'
+                                  : "You're all caught up",
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      first.isEmpty
+                          ? 'Tap to add your name'
+                          : DateFormat('EEEE, dd MMM').format(DateTime.now()),
+                      style: const TextStyle(
+                          color: Colors.white60, fontSize: 11.5),
+                    ),
+                  ],
+                ),
+              ),
+              HisabCharacter(scale: scale),
             ],
           ),
         ),
-      ),
-    );
+      );
+    });
+  }
+}
+
+/// 2 cards per row, every row as tall as its tallest card, so
+/// nothing overflows or overlaps on any phone width / font size.
+class _StatsGrid extends StatelessWidget {
+  final List<Widget> cards;
+  const _StatsGrid({required this.cards});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < cards.length; i += 2) {
+      if (i > 0) rows.add(const SizedBox(height: 12));
+      rows.add(IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: cards[i]),
+            const SizedBox(width: 12),
+            Expanded(
+                child: i + 1 < cards.length ? cards[i + 1] : const SizedBox()),
+          ],
+        ),
+      ));
+    }
+    return Column(children: rows);
   }
 }
 
@@ -393,21 +380,21 @@ class _RemindersCard extends StatelessWidget {
   const _RemindersCard({required this.items, required this.onTap});
 
   String _when(int d) {
-    if (d < 0) return '${-d} din late';
-    if (d == 0) return 'Aaj';
-    if (d == 1) return 'Kal';
-    return '$d din baad';
+    if (d < 0) return '${-d} ${d == -1 ? 'day' : 'days'} overdue';
+    if (d == 0) return 'Today';
+    if (d == 1) return 'Tomorrow';
+    return 'In $d days';
   }
 
   @override
   Widget build(BuildContext context) {
     return _CardShell(
-      title: 'Aane wali dates',
-      subtitle: 'Bills aur udhar ki akhri dates',
+      title: 'Upcoming',
+      subtitle: 'Bills and ledger due dates',
       child: items.isEmpty
           ? const Padding(
               padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text('Abhi koi date nahi aane wali 🎉',
+              child: Text('Nothing due in the next 14 days',
                   style: TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
             )
           : Column(
@@ -433,7 +420,7 @@ class _RemindersCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
+                            color: color.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(icon, size: 17, color: color),
@@ -503,8 +490,8 @@ class _DailyTodayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final today = DateTime.now();
     return _CardShell(
-      title: 'Aaj ka Daily',
-      subtitle: 'Jo aaj aaya, us par tap karein',
+      title: "Today's daily items",
+      subtitle: 'Tap what you received today',
       child: Wrap(
         spacing: 8,
         runSpacing: 4,
@@ -517,7 +504,7 @@ class _DailyTodayCard extends StatelessWidget {
                 onSelected: (_) => AppData.instance.toggleDay(d, today),
               )),
           ActionChip(
-            label: const Text('Sab dekho'),
+            label: const Text('View all'),
             avatar: const Icon(Icons.arrow_forward_rounded, size: 16),
             onPressed: onOpen,
           ),
@@ -537,7 +524,7 @@ class _RecentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CardShell(
-      title: 'Haal hi ki activity',
+      title: 'Recent activity',
       child: Column(
         children: items.map((a) {
           final color = a.kind == ActivityKind.shopping
@@ -556,7 +543,7 @@ class _RecentCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: color.withValues(alpha: 0.12),
+                  backgroundColor: color.withOpacity(0.12),
                   child: Icon(icon, size: 16, color: color),
                 ),
                 const SizedBox(width: 10),

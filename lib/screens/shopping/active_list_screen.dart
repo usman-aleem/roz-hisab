@@ -145,8 +145,8 @@ class _ActiveListScreenState extends State<ActiveListScreen> {
           duration: const Duration(seconds: 4),
           action: SnackBarAction(
             label: 'UNDO',
-            onPressed: () =>
-                setState(() => _items.insert(index.clamp(0, _items.length), removed)),
+            onPressed: () => setState(
+                () => _items.insert(index.clamp(0, _items.length), removed)),
           ),
         ),
       );

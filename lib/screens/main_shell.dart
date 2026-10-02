@@ -4,6 +4,7 @@ import 'home/home_dashboard_screen.dart';
 import 'shopping/shopping_home_screen.dart';
 import 'udhar/udhar_home_screen.dart';
 import 'bills/bills_home_screen.dart';
+import 'daily/daily_home_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -24,6 +25,7 @@ class _MainShellState extends State<MainShell> {
       const ShoppingHomeScreen(),
       const UdharHomeScreen(),
       const BillsHomeScreen(),
+      const DailyHomeScreen(),
     ];
 
     return Scaffold(
@@ -54,9 +56,11 @@ class _PremiumNavBar extends StatelessWidget {
     _NavItemData(Icons.home_outlined, Icons.home_rounded, 'Home'),
     _NavItemData(Icons.shopping_basket_outlined, Icons.shopping_basket_rounded,
         'Shopping'),
-    _NavItemData(Icons.people_alt_outlined, Icons.people_alt_rounded, 'Udhar'),
+    _NavItemData(Icons.people_alt_outlined, Icons.people_alt_rounded, 'Ledger'),
     _NavItemData(
         Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Bills'),
+    _NavItemData(
+        Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Daily'),
   ];
 
   @override
@@ -66,7 +70,7 @@ class _PremiumNavBar extends StatelessWidget {
         color: AppColors.cardBackground,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.08),
+            color: AppColors.primaryDark.withOpacity(0.08),
             blurRadius: 24,
             offset: const Offset(0, -6),
           ),

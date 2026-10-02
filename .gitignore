@@ -46,3 +46,9 @@ app.*.symbols
 # Exceptions to above rules
 !android/app/google-services.json
 !ios/Runner/GoogleService-Info.plist
+
+# Firebase / Cloud Functions
+.firebase/
+firebase-debug.log
+functions/node_modules/
+*.log

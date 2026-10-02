@@ -1,25 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../models/contact.dart';
 import 'hover_card.dart';
 
-/// One person row in the Udhar list.
-///
-/// LAZY-USER RULE: "I Gave" / "I Took" sit RIGHT on the row, so
-/// logging money is: tap button -> type amount -> Enter. No need to
-/// open the person's page first.
+/// One person row in the Udhar list: name, who owes whom, the amount,
+/// and (if set) the last date to give/get the money back.
 class ContactBalanceTile extends StatelessWidget {
   final Contact contact;
   final VoidCallback onTap;
-  final VoidCallback onGave;
-  final VoidCallback onTook;
 
   const ContactBalanceTile({
     super.key,
     required this.contact,
     required this.onTap,
-    required this.onGave,
-    required this.onTook,
   });
 
   @override
@@ -30,134 +24,104 @@ class ContactBalanceTile extends StatelessWidget {
         ? AppColors.textMuted
         : (isPositive ? AppColors.success : AppColors.danger);
 
+    final due = contact.nextDueEntry?.dueDate;
+    String? dueText;
+    Color dueColor = AppColors.textSecondary;
+    if (due != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final d = DateTime(due.year, due.month, due.day);
+      final diff = d.difference(today).inDays;
+      final date = DateFormat('dd MMM').format(due);
+      if (diff < 0) {
+        dueText = 'Overdue since $date';
+        dueColor = AppColors.danger;
+      } else if (diff == 0) {
+        dueText = 'Due today';
+        dueColor = AppColors.amber;
+      } else if (diff <= 3) {
+        dueText = 'Due $date ($diff days)';
+        dueColor = AppColors.amber;
+      } else {
+        dueText = 'Due $date';
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: HoverCard(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
             borderRadius: BorderRadius.circular(AppTokens.radiusMd),
             border: Border.all(color: AppColors.border),
             boxShadow: AppTokens.softShadow,
           ),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 21,
-                    backgroundColor: AppColors.primaryLight,
-                    child: Text(
-                      contact.name.isEmpty
-                          ? '?'
-                          : contact.name[0].toUpperCase(),
+              CircleAvatar(
+                radius: 21,
+                backgroundColor: AppColors.primaryLight,
+                child: Text(
+                  contact.name.isEmpty ? '?' : contact.name[0].toUpperCase(),
+                  style: const TextStyle(
+                    color: AppColors.primaryDark,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      contact.name,
                       style: const TextStyle(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          contact.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          bal == 0
-                              ? 'Settled'
-                              : (isPositive ? 'They owe you' : 'You owe them'),
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 2),
+                    Text(
+                      bal == 0
+                          ? 'Settled'
+                          : (isPositive ? 'They owe you' : 'You owe them'),
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                  Text(
-                    bal == 0 ? '—' : 'Rs. ${bal.abs().toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: color,
-                    ),
-                  ),
-                ],
+                    if (dueText != null) ...[
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(Icons.event_rounded, size: 13, color: dueColor),
+                          const SizedBox(width: 4),
+                          Text(dueText,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: dueColor)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickBtn(
-                      label: 'I Gave',
-                      icon: Icons.north_east_rounded,
-                      color: AppColors.success,
-                      onTap: onGave,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _QuickBtn(
-                      label: 'I Took',
-                      icon: Icons.south_west_rounded,
-                      color: AppColors.danger,
-                      onTap: onTook,
-                    ),
-                  ),
-                ],
+              Text(
+                bal == 0 ? '—' : 'Rs. ${bal.abs().toStringAsFixed(0)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: color,
+                ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickBtn extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickBtn({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 15, color: color),
-            const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(
-                    color: color, fontWeight: FontWeight.w700, fontSize: 13)),
-          ],
         ),
       ),
     );

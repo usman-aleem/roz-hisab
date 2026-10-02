@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/app_data.dart';
 import '../../services/backup_service.dart';
+import '../../services/cloud_service.dart';
+import '../../widgets/cloud_dialogs.dart';
 import '../../services/auth_service.dart';
 import '../auth/pin_setup_screen.dart';
 import '../auth/pin_keypad.dart';
@@ -173,6 +175,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _exportPdf() async {
+    setState(() => _working = true);
+    try {
+      await BackupService.exportPdf();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Backup PDF ready')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Backup failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
   Future<void> _export() async {
     setState(() => _working = true);
     try {
@@ -253,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _explainStep(
               Icons.description_outlined,
               'A single file is created',
-              'Everything — shopping lists, Udhar Khata, bills — is '
+              'Everything — shopping lists, Ledger, bills — is '
                   'packed into one .json file, named with today\'s date.',
             ),
             const SizedBox(height: 12),
@@ -412,10 +433,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Reset App?'),
         content: const Text(
           'This permanently deletes EVERYTHING on this device — every '
-          'shopping list, every Udhar Khata contact and balance, every '
-          'bill. There is no undo. If you have a backup file, you can '
-          'restore from it afterward — otherwise this data is gone for '
-          'good.',
+          'shopping list, every Ledger contact and balance, every '
+          'bill. There is no undo. If you are logged in with Google, '
+          'your CLOUD copy is deleted too. Keep a PDF / restore file '
+          'first if you may need this data again.',
         ),
         actions: [
           TextButton(
@@ -454,28 +475,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.amberLight,
-              borderRadius: BorderRadius.circular(AppTokens.radiusMd),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded,
-                    color: AppColors.amber, size: 20),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Your data is saved only on this phone. Regular '
-                    'backups are important — otherwise everything is '
-                    'lost if the phone is lost or reset.',
-                    style: TextStyle(fontSize: 12.5, height: 1.4),
-                  ),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 20),
           const _SectionLabel('Your Details'),
           const SizedBox(height: 10),
@@ -497,21 +496,95 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: _editBudget,
           ),
           const SizedBox(height: 20),
+          const _SectionLabel('Cloud Backup'),
+          const SizedBox(height: 10),
+          ListenableBuilder(
+            listenable: CloudService.instance,
+            builder: (context, _) {
+              final cloud = CloudService.instance;
+              if (!cloud.available) {
+                return const _SettingsTile(
+                  icon: Icons.cloud_off_outlined,
+                  title: 'Cloud Backup',
+                  subtitle: 'Not configured yet',
+                  color: AppColors.textMuted,
+                  onTap: null,
+                );
+              }
+              if (!cloud.signedIn) {
+                return _SettingsTile(
+                  icon: Icons.cloud_upload_outlined,
+                  title: 'Sign in with Google',
+                  subtitle: 'Back up automatically and restore on any device',
+                  color: AppColors.primary,
+                  onTap: _working
+                      ? null
+                      : () async {
+                          setState(() => _working = true);
+                          await connectCloudUi(context);
+                          if (mounted) setState(() => _working = false);
+                        },
+                );
+              }
+              final t = cloud.lastSynced;
+              final sub = cloud.syncing
+                  ? 'Syncing...'
+                  : (cloud.lastError != null
+                      ? 'Sync error: ${cloud.lastError}  (tap to retry)'
+                      : (t == null
+                          ? 'Tap to sync now'
+                          : 'Last synced: ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}  (tap to sync now)'));
+              return Column(
+                children: [
+                  _SettingsTile(
+                    icon: cloud.lastError != null
+                        ? Icons.cloud_off_outlined
+                        : Icons.cloud_done_outlined,
+                    title: cloud.user?.email ?? 'Logged in',
+                    subtitle: sub,
+                    color: cloud.lastError != null
+                        ? AppColors.danger
+                        : AppColors.success,
+                    onTap: cloud.syncing
+                        ? null
+                        : () => cloud.syncNow(AppData.instance),
+                  ),
+                  const SizedBox(height: 10),
+                  _SettingsTile(
+                    icon: Icons.logout_rounded,
+                    title: 'Sign out',
+                    subtitle: 'Your data stays on this device',
+                    color: AppColors.textSecondary,
+                    onTap: () => cloud.signOut(),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 24),
           const _SectionLabel('Backup & Restore'),
           const SizedBox(height: 10),
           _SettingsTile(
-            icon: Icons.upload_outlined,
-            title: 'Create Backup',
-            subtitle: 'Save a copy of everything — tap to see how',
+            icon: Icons.picture_as_pdf_outlined,
+            title: 'Backup (PDF)',
+            subtitle: 'Download all your data as a PDF',
             color: AppColors.primary,
-            onTap: _working ? null : _explainBackup,
+            onTap: _working ? null : _exportPdf,
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.save_alt_rounded,
+            title: 'Export restore file (.json)',
+            subtitle: 'Use this to move your data to a new phone',
+            color: AppColors.accent,
+            onTap: _working ? null : _export,
           ),
           const SizedBox(height: 10),
           _SettingsTile(
             icon: Icons.download_outlined,
             title: 'Restore Backup',
-            subtitle: 'Bring back data from a backup file you saved before',
-            color: AppColors.accent,
+            subtitle: 'Restore from a .json backup file',
+            color: AppColors.accentDark,
             onTap: _working ? null : _import,
           ),
           const SizedBox(height: 24),
@@ -608,7 +681,7 @@ class _SettingsTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
+                color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 19),

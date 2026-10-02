@@ -15,8 +15,10 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          # No fixed version: always the latest stable Flutter, which the
+          # Firebase packages need. (Pinning 3.24.0 would fail the build.)
           channel: 'stable'
+          cache: true
 
       # The android/ and ios/ platform folders are intentionally NOT
       # committed to the repo (see DEPLOYMENT.md) to keep the source

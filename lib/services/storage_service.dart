@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/bill.dart';
 import '../models/contact.dart';
+import '../models/daily_item.dart';
 import '../models/shopping_list.dart';
 import 'crypto_service.dart';
 
@@ -19,6 +20,8 @@ class StorageService {
   static const _keyShoppingLists = 'roz_hisab_shopping_lists';
   static const _keyContacts = 'roz_hisab_contacts';
   static const _keyBills = 'roz_hisab_bills';
+  static const _keyOnboarded = 'roz_hisab_onboarded';
+  static const _keyDaily = 'roz_hisab_daily_items';
   static const _keySeeded = 'roz_hisab_seeded_v1';
   static const _keyUserName = 'roz_hisab_user_name';
   static const _keyUserPhone = 'roz_hisab_user_phone';
@@ -92,12 +95,44 @@ class StorageService {
       final jsonStr = await _crypto.decryptString(stored);
       if (jsonStr == null) return [];
       final list = jsonDecode(jsonStr) as List;
-      return list
-          .map((e) => Bill.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return list.map((e) => Bill.fromJson(e as Map<String, dynamic>)).toList();
     } catch (e) {
       debugPrint('Roz Hisab: bills data was corrupted, '
           'starting fresh for this category. Error: $e');
+      return [];
+    }
+  }
+
+  Future<bool> loadOnboarded() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyOnboarded) ?? false;
+  }
+
+  Future<void> saveOnboarded(bool v) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyOnboarded, v);
+  }
+
+  Future<void> saveDailyItems(List<DailyItem> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = jsonEncode(items.map((d) => d.toJson()).toList());
+    final encrypted = await _crypto.encryptString(jsonStr);
+    await prefs.setString(_keyDaily, encrypted);
+  }
+
+  Future<List<DailyItem>> loadDailyItems() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stored = prefs.getString(_keyDaily);
+      if (stored == null) return [];
+      final jsonStr = await _crypto.decryptString(stored);
+      if (jsonStr == null) return [];
+      final list = jsonDecode(jsonStr) as List;
+      return list
+          .map((e) => DailyItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('Roz Hisab: daily items data was corrupted: $e');
       return [];
     }
   }
@@ -166,5 +201,6 @@ class StorageService {
     await prefs.remove(_keyShoppingLists);
     await prefs.remove(_keyContacts);
     await prefs.remove(_keyBills);
+    await prefs.remove(_keyDaily);
   }
 }

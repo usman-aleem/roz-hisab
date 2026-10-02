@@ -3,6 +3,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import '../models/bill.dart';
+import '../models/contact.dart';
+import '../models/udhar_entry.dart';
 
 /// Schedules a local notification the morning a bill is due, so
 /// "Bill Reminders" actually reminds you — not just shows colors in
@@ -105,6 +107,62 @@ class NotificationService {
     if (kIsWeb || !_initialized) return;
     for (final bill in bills.where((b) => !b.isPaid)) {
       await scheduleBillReminder(bill);
+    }
+  }
+
+  // ---------- Udhar due-date reminders ----------
+
+  /// 9:00 AM on the day money is due to be given/received.
+  Future<void> scheduleUdharReminder(Contact c, UdharEntry e) async {
+    if (kIsWeb || !_initialized || e.dueDate == null) return;
+    final due = e.dueDate!;
+    final when = tz.TZDateTime(tz.local, due.year, due.month, due.day, 9, 0);
+    if (when.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+    final receive = e.type == UdharType.theyOweMe;
+    try {
+      await _plugin.zonedSchedule(
+        _notificationIdFor('udhar_${e.id}'),
+        receive ? 'Collect payment from ${c.name}' : 'Pay ${c.name} today',
+        'Rs. ${c.balance.abs().toStringAsFixed(0)} is due today. '
+        'Open Roz Hisab for details.',
+        when,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'udhar_reminders',
+            'Ledger Reminders',
+            channelDescription: 'Reminds you when a ledger payment is due',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (err) {
+      debugPrint('Roz Hisab: could not schedule udhar reminder: $err');
+    }
+  }
+
+  Future<void> cancelUdharReminder(UdharEntry e) async {
+    if (kIsWeb || !_initialized) return;
+    await _plugin.cancel(_notificationIdFor('udhar_${e.id}'));
+  }
+
+  /// Re-syncs every udhar reminder: schedules the ones still
+  /// outstanding, cancels the ones that were settled/changed.
+  Future<void> syncUdhar(List<Contact> contacts) async {
+    if (kIsWeb || !_initialized) return;
+    for (final c in contacts) {
+      for (final e in c.entries.where((e) => e.dueDate != null)) {
+        if (c.isDueActive(e)) {
+          await scheduleUdharReminder(c, e);
+        } else {
+          await cancelUdharReminder(e);
+        }
+      }
     }
   }
 }

@@ -60,10 +60,11 @@ class BillTile extends StatelessWidget {
     final due =
         DateTime(bill.dueDate.year, bill.dueDate.month, bill.dueDate.day);
     final diff = due.difference(today).inDays;
-    if (diff < 0) return '$date  •  ${-diff} din late';
-    if (diff == 0) return '$date  •  Aaj';
-    if (diff == 1) return '$date  •  Kal';
-    return '$date  •  $diff din baad';
+    if (diff < 0)
+      return '$date  •  ${-diff} day${diff == -1 ? '' : 's'} overdue';
+    if (diff == 0) return '$date  •  Today';
+    if (diff == 1) return '$date  •  Tomorrow';
+    return '$date  •  In $diff days';
   }
 
   @override
@@ -83,7 +84,7 @@ class BillTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppTokens.radiusMd),
             border: Border.all(
               color: status == BillStatus.overdue
-                  ? AppColors.danger.withValues(alpha: 0.4)
+                  ? AppColors.danger.withOpacity(0.4)
                   : AppColors.border,
             ),
             boxShadow: paid ? null : AppTokens.softShadow,

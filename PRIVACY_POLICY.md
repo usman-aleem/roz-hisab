@@ -1,28 +1,30 @@
 # Privacy Policy — Roz Hisab
 
-**Last updated:** 27 September 2026
+**Last updated:** 1 October 2026
 
 Roz Hisab ("the app") is built around a simple rule: your financial
-records belong to you, stay on your device, and are never sent
-anywhere without your explicit action. This policy explains exactly
-what that means.
+records belong to you. By default they stay on your own device. If you
+choose to sign in with Google, they are also backed up to your own
+private cloud space. This policy explains exactly what that means.
 
 ## 1. What data the app collects
 
-Roz Hisab does not collect, transmit, or have access to any of your
-data. There is no account, no login, and no server — the app has no
-backend at all. Everything you enter (shopping lists, Udhar Khata
-entries and contacts, bills) is created and stored **only on your
-own device**.
+**Without signing in:** the app collects nothing. There is no account
+and no server involved. Everything you enter (shopping lists, Udhar
+Khata entries and contacts, bills, daily items) is stored **only on
+your own device**.
 
-The app does not use analytics, crash reporting, advertising SDKs,
-or any other third-party service that would transmit your usage or
-personal data off the device.
+**If you sign in with Google (optional):** Google Firebase
+Authentication receives your Google account's basic profile (name,
+email, unique ID) to log you in, and your records are copied to
+Google Firebase Firestore so they can be restored on another device.
+This only happens after you tap "Google se Login". The app does not
+use analytics, advertising SDKs, or crash-reporting services.
 
 ## 2. Where your data is stored
 
-- Shopping lists, Udhar Khata records, and bills are stored locally
-  using `SharedPreferences`, encrypted at rest with AES-256. The
+- Shopping lists, Udhar Khata records, bills and daily items are stored
+  locally using `SharedPreferences`, encrypted at rest with AES-256. The
   encryption key is generated on-device and held in the Android
   Keystore / iOS Keychain via `flutter_secure_storage` — it never
   leaves the device and is never sent to Roz Hisab or anyone else.
@@ -36,10 +38,26 @@ personal data off the device.
   locally as plain text, since
   they contain no transaction detail.
 
+## 2a. Cloud backup (only if you sign in)
+
+- Your records are stored in Firestore under `users/{your-user-id}`.
+  Security rules allow only you (the signed-in user) to read or write
+  that area. The data is protected in transit and at rest by Google,
+  but it is **not end-to-end encrypted**, which means Google (and the
+  app's developer, through the Firebase console) can technically
+  access it.
+- Logging out keeps the data on your device and in the cloud. "Reset
+  App" while logged in deletes the cloud copy as well.
+- If the developer enables the optional email-reminder feature, your
+  Google email address is used to send due-date reminders through the
+  Brevo email service. No other data leaves the cloud for this purpose
+  except the reminder text (bill/person name and amount).
+
 ## 3. Backups you create yourself
 
-The Settings screen lets you export a backup as a `.json` file using
-your device's native share sheet. That file is created and shared
+The Settings screen lets you download a readable **PDF backup** of all
+your data with one tap, and export a `.json` restore file, using your
+device's native share/download feature. That file is created and shared
 entirely **by you** — Roz Hisab does not upload it anywhere. Where
 it ends up (your own cloud drive, WhatsApp, email, a USB drive) is
 your choice, and you're responsible for keeping that file safe,
@@ -62,34 +80,31 @@ your phone's contact list.
 ## 5. Third-party sharing
 
 Roz Hisab does not sell, rent, or share your data with any third
-party, because it never has a copy of your data to share in the
-first place. The only places your data ever goes are places you
-explicitly send it to — for example, sharing a shopping receipt PDF
+party. The only places your data goes are places you explicitly send
+it to (a WhatsApp/Email alert, a receipt or backup file, or Google
+Firebase if you sign in) — for example, sharing a shopping receipt PDF
 or a backup file through your device's normal share sheet.
 
 ## 6. Data deletion
 
-Since all data lives only on your device, you are always in full
-control of it:
+You are in control of your data:
 
 - Delete a single shopping list, contact, or bill from within the app.
 - Use **Settings → Reset App** to permanently erase everything the
-  app has stored on this device.
-- Uninstalling the app removes all of its local data.
-
-There is no account for Roz Hisab to delete on a server, because no
-server-side copy of your data ever exists.
+  app has stored on this device (and your cloud copy, if logged in).
+- Uninstalling the app removes its local data.
+- To delete your cloud account data without using the app, contact
+  the address in section 9 and it will be removed.
 
 ## 7. Children's privacy
 
 Roz Hisab is a general-purpose personal finance tool not directed at
 children, and does not knowingly collect data from anyone, child or
-adult, since it does not collect data at all.
+adult, and does not collect data unless the user chooses to sign in.
 
 ## 8. Changes to this policy
 
-If this policy changes — for example, if a future version adds an
-optional cloud sync feature — this document will be updated and the
+If this policy changes, this document will be updated and the
 "Last updated" date above will change accordingly. Any feature that
 would send your data off-device will be off by default and clearly
 explained before you turn it on.

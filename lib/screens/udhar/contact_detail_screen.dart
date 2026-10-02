@@ -6,6 +6,8 @@ import '../../config/theme.dart';
 import '../../models/contact.dart';
 import '../../models/udhar_entry.dart';
 import '../../services/app_data.dart';
+import '../../services/alert_service.dart';
+import '../../widgets/due_date_picker.dart';
 
 class ContactDetailScreen extends StatefulWidget {
   final Contact contact;
@@ -29,6 +31,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
         text: existing != null ? existing.amount.toStringAsFixed(0) : '');
     final noteCtrl = TextEditingController(text: existing?.note ?? '');
     UdharType selectedType = existing?.type ?? type;
+    DateTime? dueDate = existing?.dueDate;
 
     showModalBottomSheet(
       context: context,
@@ -94,6 +97,11 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                   decoration: const InputDecoration(
                       hintText: 'Note (optional) — e.g. tea money'),
                 ),
+                const SizedBox(height: 12),
+                DueDatePicker(
+                  value: dueDate,
+                  onChanged: (d) => setModalState(() => dueDate = d),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -103,7 +111,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                           onPressed: () {
                             Navigator.pop(context);
                             AppData.instance
-                                .deleteUdharEntry(widget.contact, existing.id);
+                                .deleteUdharEntry(widget.contact, existing!.id);
                             setState(() {});
                           },
                           style: OutlinedButton.styleFrom(
@@ -121,15 +129,17 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                           if (amount == null || amount <= 0) return;
                           setState(() {
                             if (isEditing) {
-                              existing.type = selectedType;
+                              existing!.type = selectedType;
                               existing.amount = amount;
                               existing.note = noteCtrl.text.trim();
+                              existing.dueDate = dueDate;
                             } else {
                               widget.contact.entries.add(UdharEntry(
                                 id: const Uuid().v4(),
                                 type: type,
                                 amount: amount,
                                 note: noteCtrl.text.trim(),
+                                dueDate: dueDate,
                               ));
                             }
                           });
@@ -252,8 +262,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
         digits.startsWith('0') ? '92${digits.substring(1)}' : digits;
 
     final message = bal > 0
-        ? 'Salam ${widget.contact.name}, Roz Hisab ke mutabiq apka mera Rs. ${bal.abs().toStringAsFixed(0)} udhar hai. Waqt milte hi ada kar dein, shukriya!'
-        : 'Salam ${widget.contact.name}, yaad dila raha hoon ke mujhe apka Rs. ${bal.abs().toStringAsFixed(0)} dena hai — jald ada kar doon ga.';
+        ? 'Hi ${widget.contact.name}, a friendly reminder from Roz Hisab: you owe me Rs. ${bal.abs().toStringAsFixed(0)}. Please pay when you can. Thank you!'
+        : 'Hi ${widget.contact.name}, just a note that I owe you Rs. ${bal.abs().toStringAsFixed(0)}. I will pay you back soon.';
 
     final uri = Uri.parse(
         'https://wa.me/$normalized?text=${Uri.encodeComponent(message)}');
@@ -319,7 +329,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
               TextField(
                 controller: nameCtrl,
                 autofocus: true,
-                decoration: const InputDecoration(hintText: 'Naam'),
+                decoration: const InputDecoration(hintText: 'Name'),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -397,6 +407,14 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
         title: Text(contact.name),
         actions: [
           IconButton(
+            tooltip: 'Share statement on WhatsApp',
+            onPressed: () => AlertService.whatsapp(
+              AlertService.udharStatement(contact),
+              phone: contact.phone,
+            ),
+            icon: const Icon(Icons.share_outlined),
+          ),
+          IconButton(
             onPressed: _editContact,
             icon: const Icon(Icons.edit_outlined),
           ),
@@ -413,7 +431,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -578,7 +596,10 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                             fontWeight: FontWeight.w600),
                                       ),
                                       Text(
-                                        DateFormat('dd MMM').format(e.date),
+                                        e.dueDate == null
+                                            ? DateFormat('dd MMM')
+                                                .format(e.date)
+                                            : '${DateFormat('dd MMM').format(e.date)}  •  Due: ${DateFormat('dd MMM').format(e.dueDate!)}',
                                         style: const TextStyle(
                                             fontSize: 12,
                                             color: AppColors.textSecondary),

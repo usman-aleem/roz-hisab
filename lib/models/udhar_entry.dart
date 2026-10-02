@@ -8,6 +8,10 @@ class UdharEntry {
   DateTime date;
   bool isSettled;
 
+  /// Last date to give back / get back (optional). Drives the
+  /// reminder notification and the "Due" label.
+  DateTime? dueDate;
+
   UdharEntry({
     required this.id,
     required this.type,
@@ -15,6 +19,7 @@ class UdharEntry {
     this.note = '',
     DateTime? date,
     this.isSettled = false,
+    this.dueDate,
   }) : date = date ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
@@ -24,6 +29,7 @@ class UdharEntry {
         'note': note,
         'date': date.toIso8601String(),
         'isSettled': isSettled,
+        'dueDate': dueDate?.toIso8601String(),
       };
 
   factory UdharEntry.fromJson(Map<String, dynamic> json) => UdharEntry(
@@ -33,5 +39,7 @@ class UdharEntry {
         note: json['note'] ?? '',
         date: DateTime.parse(json['date']),
         isSettled: json['isSettled'] ?? false,
+        dueDate:
+            json['dueDate'] == null ? null : DateTime.tryParse(json['dueDate']),
       );
 }

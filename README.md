@@ -4,7 +4,7 @@ A simple, private, and offline-first finance management app designed for everyda
 
 Roz Hisab is a personal finance and daily expense management application built to help individuals, families, freelancers, and small businesses manage everyday financial records in one place.
 
-The application focuses on three common financial needs: shopping and expense tracking, informal credit management, and bill reminders.
+The application focuses on four everyday financial needs: shopping and expense tracking, informal credit management, bill reminders, and daily recurring items (doodh, naan, akhbar and similar).
 
 Designed with simplicity and privacy in mind, Roz Hisab allows users to manage essential financial records without requiring a mandatory account or constant internet connectivity.
 
@@ -14,13 +14,15 @@ Managing everyday finances is often more complicated than it needs to be. People
 
 Roz Hisab brings these everyday tasks into a single, easy-to-use application.
 
-The application addresses three common problems:
+The application addresses four common problems:
 
 **Shopping & Expenses** — Keep track of items purchased, quantities, and prices while shopping. Frequently-bought items appear as one-tap "Buy Again" suggestions, so building a list doesn't mean retyping the same items every trip. Every item is automatically sorted into a spend category behind the scenes, so a "where did my money go" breakdown is available on the Home dashboard with no manual tagging. Users can also generate a PDF receipt for their records or for sharing.
 
 **Udhar Khata** — Maintain clear records of money given to or received from friends, relatives, customers, or other individuals. Each person's transactions and current balance are tracked separately, full or partial repayments are recorded with a dedicated "Settle Up" action, and a balance can be followed up on directly via a pre-drafted WhatsApp reminder.
 
 **Bill Reminders** — Record recurring and one-time bills, monitor their due dates, and identify upcoming or overdue payments through clear, color-coded status indicators. Marking a recurring bill as paid automatically schedules the next one, so a reminder never silently stops just because it was forgotten one month.
+
+**Daily Hisab** — Track things you receive every day and settle monthly (milk, bread, newspaper, water bottles, a maid). One tap per day on a month calendar; the month's quantity and total are always ready, and can be sent on WhatsApp or Email.
 
 ## Key Features
 
@@ -50,7 +52,9 @@ A digital ledger for managing informal lending and borrowing.
 - Maintain individual transaction histories
 - Track outstanding balances
 - Record full or partial repayments with a dedicated "Settle Up" action
-- Edit or delete any individual transaction (tap to edit, swipe to delete)
+- Optional last date to give back / get back, with a reminder notification
+- Edit or delete any individual transaction
+- Share a person's full statement on WhatsApp
 - Send a friendly, pre-drafted balance reminder directly to WhatsApp
 - Clearly identify money receivable and payable
 - Maintain an updated running balance
@@ -96,15 +100,17 @@ The goal is straightforward: **make everyday financial record-keeping simple, ac
 
 Privacy is an important part of the Roz Hisab experience.
 
-**No Mandatory Login** — Users can access the core application without being required to create an account.
+**No Mandatory Login** — Users can access the core application without being required to create an account. Signing in with Google is optional and only enables cloud backup.
 
 **Offline-First** — Core financial records are designed to remain accessible without a continuous internet connection.
 
-Internet access is only used for features that inherently require it — sharing a receipt or backup file, or opening WhatsApp for a reminder. No background sync, no analytics, no server ever sees your data.
+Without signing in, internet access is only used for features that inherently require it — sharing a receipt or backup file, or opening WhatsApp or Email for an alert. There are no analytics and no ads. If (and only if) you choose to sign in with Google, your records are also stored in your own private area of Google Firebase (Firestore) so you can recover them on another device.
 
 **Optional App Lock** — Protect the app with a 4-digit PIN (plus fingerprint where available). A security question chosen at setup lets you recover access if the PIN is forgotten; a wrong PIN shakes and turns red. The PIN and answer are stored only as hashes in the device's secure storage.
 
-**Local Data** — All financial records (shopping lists, Udhar Khata entries, bills) are stored only on the user's device, encrypted at rest with AES-256, with the encryption key held in the Android Keystore / iOS Keychain.
+**Local Data** — On Android and iOS, financial records (shopping lists, Udhar Khata entries, bills, daily items) are encrypted at rest with AES-256, with the key held in the Android Keystore / iOS Keychain. On the website, browser storage is used, which gives weaker protection than a phone's secure hardware.
+
+**Optional Cloud Backup** — After Google login, data is synced to Firestore under `users/{your-uid}`; security rules allow only that signed-in user to read or write it. It is not end-to-end encrypted. Settings → Backup also creates a readable PDF of everything with one tap.
 
 This approach reduces unnecessary dependence on online services and gives users greater control over their personal financial records.
 
